@@ -3,10 +3,11 @@
 # Além das funções e classes já definidas, podem acrescentar outras que considerem pertinentes.
 
 # Grupo 00:
-# 00000 Nome1
-# 00000 Nome2
+# 103468 Pedro Gomes
+# 104156 Henrique Pimentel
 
 import sys
+
 from search import (
     Problem,
     Node,
@@ -64,6 +65,17 @@ class Board:
             > line = stdin.readline().split()
         """
         # TODO
+        rows = sys.stdin.readline().split()
+        columns = sys.stdin.readline().split()
+
+        matrix = [['X' for _ in range(11)] for _ in range(11)]
+        for i in range(10):
+            matrix[i][10] = rows[i+1]
+            matrix[10][i] = columns[i+1]
+
+        for row in matrix:
+            print(row)
+
         pass
 
     # TODO: outros metodos da classe
@@ -110,4 +122,7 @@ if __name__ == "__main__":
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
+
+    Board.parse_instance()
+
     pass
