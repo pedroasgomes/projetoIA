@@ -2,7 +2,7 @@
 # Devem alterar as classes e funções neste ficheiro de acordo com as instruções do enunciado.
 # Além das funções e classes já definidas, podem acrescentar outras que considerem pertinentes.
 
-# Grupo 00:
+# Grupo 120:
 # 103468 Pedro Gomes
 # 104156 Henrique Pimentel
 
@@ -35,6 +35,11 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
+    """ Tem uma matriz que serve para representação do board"""
+
+    def __init__(self):
+        self.matrix = matrix = [['X' for _ in range(11)] for _ in range(11)]
+
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
@@ -56,29 +61,31 @@ class Board:
     @staticmethod
     def parse_instance():
         """Lê o test do standard input (stdin) que é passado como argumento
-        e retorna uma instância da classe Board.
+        e retorna uma instância da classe Board."""
 
-        Por exemplo:
-            $ python3 bimaru.py < input_T01
-
-            > from sys import stdin
-            > line = stdin.readline().split()
-        """
-        # TODO
+        board = Board()
         rows = sys.stdin.readline().split()
         columns = sys.stdin.readline().split()
 
-        matrix = [['X' for _ in range(11)] for _ in range(11)]
         for i in range(10):
-            matrix[i][10] = rows[i+1]
-            matrix[10][i] = columns[i+1]
+            board.change_tile(i, 10, rows[i + 1])
+            board.change_tile(10, i, columns[i + 1])
 
-        for row in matrix:
+        return board
+
+    # TODO: outros metodos da classe
+
+    def change_tile(self, row, column, new_piece):
+        self.matrix[row][column] = new_piece
+
+    def print_matrixNF(self):
+        for row in self.matrix:
             print(row)
 
         pass
 
-    # TODO: outros metodos da classe
+
+
 
 
 class Bimaru(Problem):
@@ -123,6 +130,9 @@ if __name__ == "__main__":
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
 
-    Board.parse_instance()
+    myBoard = Board()
+    myBoard = myBoard.parse_instance()
+    myBoard.print_matrixNF()
+
 
     pass
