@@ -35,57 +35,108 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
-    """ Tem uma matriz que serve para representação do board"""
+    """ Tem uma matriz que serve para representação do board, 
+    talvez mudar para 1 matriz e 2 tuplos ????"""
 
     def __init__(self):
-        self.matrix = matrix = [['X' for _ in range(11)] for _ in range(11)]
-
+        self.matrix = matrix = [['_' for _ in range(11)] for _ in range(11)]
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
-        # TODO
-        pass
+        return str(self.matrix[row][col])
 
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
-        # TODO
-        pass
+
+        output = ()
+
+        output = output + (None,) if row == 0 \
+            else output + (self.get_value(row - 1, col),)
+
+        output = output + (None,) if row == 9 \
+            else output + (self.get_value(row + 1, col),)
+
+        return output
 
     def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
         """Devolve os valores imediatamente à esquerda e à direita,
-        respectivamente."""
-        # TODO
-        pass
+        respetivamente. Para evitar comparacoes desnecessarias nao
+        vamos verificar se os inputs nao passam da dimensao do board"""
+
+        output = ()
+
+        output = output + (None,) if col == 0 \
+            else output + (self.get_value(row, col - 1),)
+
+        output = output + (None,) if col == 9 \
+            else output + (self.get_value(row, col + 1),)
+
+        return output
 
     @staticmethod
     def parse_instance():
-        """Lê o test do standard input (stdin) que é passado como argumento
+        """Lê o test do standard input (stdin) passado como argumento
         e retorna uma instância da classe Board."""
 
         board = Board()
         rows = sys.stdin.readline().split()
         columns = sys.stdin.readline().split()
 
+        board.change_tile(10, 10, 'X')  # Soh para diferenciar dos locais sem pecas
         for i in range(10):
             board.change_tile(i, 10, rows[i + 1])
             board.change_tile(10, i, columns[i + 1])
 
+
+
+
+
+
+
+        number_hints = sys.stdin.readline().split()
+        for i in range(int(number_hints[0])):
+            hint = sys.stdin.readline().split()
+            board.change_tile(int(hint[1]), int(hint[2]), hint[3])
+            board.flood_tiles(int(hint[1]), int(hint[2]), hint[3])
+
+
+
+
+
+
+
         return board
 
-    # TODO: outros metodos da classe
+    # Outros metodos da classe
+    def flood_tiles(self, row, col, piece):
+        if piece == "W":
+            return
+        elif piece == "C":
+            pass
+        elif piece == "M":
+            pass
+        elif piece == "T":
+            pass
+        elif piece == "B":
+            pass
+        elif piece == "L":
+            pass
+        elif piece == "R":
+            pass
 
-    def change_tile(self, row, column, new_piece):
-        self.matrix[row][column] = new_piece
+    def change_tile(self, row, col, new_piece): # Accepts None as a piece but does nothing
+        self.matrix[row][col] = new_piece
 
-    def print_matrixNF(self):
+    def piece_limit_row(self, row):
+        return self.get_value(row, 10)
+
+    def piece_limit_column(self, col):
+        return self.get_value(10, col)
+
+    def print_matrix_nf(self):
         for row in self.matrix:
             print(row)
-
-        pass
-
-
-
 
 
 class Bimaru(Problem):
@@ -132,7 +183,8 @@ if __name__ == "__main__":
 
     myBoard = Board()
     myBoard = myBoard.parse_instance()
-    myBoard.print_matrixNF()
-
+    myBoard.print_matrix_nf()
+    print(myBoard.adjacent_horizontal_values(0,0))
+    print(myBoard.adjacent_vertical_values(0, 0))
 
     pass
