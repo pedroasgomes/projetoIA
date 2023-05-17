@@ -85,10 +85,11 @@ class Board:
 
         board.flood_col_row()
         board.sort_unflooded()
-
+        cycle = 0
         while True:
             initial_length = len(board.unflooded_pieces)  # Store the initial length of the list
-            board.flood_unflooded_pieces()
+            board.flood_unflooded_pieces(cycle)
+            cycle += 1
             if len(board.unflooded_pieces) == initial_length:
                 break
 
@@ -139,12 +140,12 @@ class Board:
     def is_inside_board(self, row, col):
         return (0 <= row <= 9) and (0 <= col <= 9)
 
-    def flood_unflooded_pieces(self):
+    def flood_unflooded_pieces(self, cycle):
         if not self.unflooded_pieces:
             return
         else:
             for x in self.unflooded_pieces[:]:
-                self.flood_tiles(x[0], x[1], x[2])
+                self.flood_tiles(x[0], x[1], x[2], cycle)
 
     def flood_col_row(self):
         for i in range(10):
@@ -183,9 +184,9 @@ class Board:
     def middle_is_horizontal(self, row, col):
         return self.middle_has_orientation(row, col) == 2
 
-    def flood_tiles(self, row, col, piece):
+    def flood_tiles(self, row, col, piece, cycle_number):
 
-        adjacent_coordinates = self.get_adjacent_coordinates(row, col, piece)
+        adjacent_coordinates = self.get_adjacent_coordinates(row, col, piece, cycle_number)
 
         for x in adjacent_coordinates:
             if self.is_inside_board(x[0], x[1]):
@@ -197,7 +198,7 @@ class Board:
             self.unflooded_pieces.remove((row, col, piece))
             return
 
-    def get_adjacent_coordinates(self, row, col, piece):
+    def get_adjacent_coordinates(self, row, col, piece, cycle_number):
 
         if piece == 'C':
             adjacent_coords = [(row + i, col + j) for i in range(-1, 2) for j in range(-1, 2)
@@ -230,7 +231,10 @@ class Board:
 
         elif piece == 'M':
 
-            adjacent_coords = [(row+1, col+1), (row+1, col-1), (row-1, col+1), (row-1, col-1)]
+            if cycle_number == 0:   # Coloca sempre as pontas, msm se nao encontrar orientacao
+                adjacent_coords = [(row+1, col+1), (row+1, col-1), (row-1, col+1), (row-1, col-1)]
+            else:
+                adjacent_coords = []
 
             if self.middle_is_vertical(row, col):
                 adjacent_coords.append((row, col + 1))
