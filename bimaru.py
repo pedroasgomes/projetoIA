@@ -127,6 +127,9 @@ class Board:
     def is_boat_piece(self, piece):
         return piece.upper() in ['T', 'B', 'L', 'R', 'C', 'M']
 
+    def is_middle_piece(self, piece):
+        return piece.upper() == 'M'
+
     def is_water_piece(self, piece):
         return piece.upper() == 'W'
 
@@ -184,13 +187,15 @@ class Board:
 
         adjacent_coordinates = self.get_adjacent_coordinates(row, col, piece)
 
-        if not (adjacent_coordinates is None):
-            for x in adjacent_coordinates:
-                if self.is_inside_board(x[0], x[1]):
-                    self.change_tile(x[0], x[1], 'w')
-            self.unflooded_pieces.remove((row, col, piece))
+        for x in adjacent_coordinates:
+            if self.is_inside_board(x[0], x[1]):
+                self.change_tile(x[0], x[1], 'w')
 
-        return
+        if self.is_middle_piece(piece) and not self.middle_has_orientation(row, col):
+            return
+        else:
+            self.unflooded_pieces.remove((row, col, piece))
+            return
 
     def get_adjacent_coordinates(self, row, col, piece):
 
@@ -224,17 +229,18 @@ class Board:
             return tuple(adjacent_coords)
 
         elif piece == 'M':
+
+            adjacent_coords = [(row+1, col+1), (row+1, col-1), (row-1, col+1), (row-1, col-1)]
+
             if self.middle_is_vertical(row, col):
-                adjacent_coords = [(row + i, col + j) for i in range(-1, 2) for j in range(-1, 2)
-                                   if not (j == 0)]
-                return tuple(adjacent_coords)
+                adjacent_coords.append((row, col + 1))
+                adjacent_coords.append((row, col - 1))
 
             elif self.middle_is_horizontal(row, col):
-                adjacent_coords = [(row + i, col + j) for i in range(-1, 2) for j in range(-1, 2)
-                                   if not (i == 0)]
-                return tuple(adjacent_coords)
+                adjacent_coords.append((row - 1, col))
+                adjacent_coords.append((row + 1, col))
 
-
+            return tuple(adjacent_coords)
 
     def print_matrix_nf(self):
         for row in self.matrix:
