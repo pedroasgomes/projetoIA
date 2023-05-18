@@ -51,16 +51,15 @@ class Board:
         else:
             return None
 
-    def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
+    def adjacent_vertical_values(self, row: int, col: int):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
 
-        return self.get_value(row - 1, col),self.get_value(row + 1, col)
+        return self.get_value(row - 1, col), self.get_value(row + 1, col)
 
-    def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
+    def adjacent_horizontal_values(self, row: int, col: int):
         """Devolve os valores imediatamente à esquerda e à direita,
-        respetivamente. Para evitar comparacoes desnecessarias nao
-        vamos verificar se os inputs nao passam da dimensao do board"""
+        respetivamente."""
 
         return self.get_value(row, col - 1), self.get_value(row, col + 1)
 
@@ -83,14 +82,14 @@ class Board:
             hint = sys.stdin.readline().split()
             board.add_piece(int(hint[1]), int(hint[2]), hint[3])
 
-        board.flood_col_row()
-        board.sort_unflooded()
+        board.flood_col_row()   # Vai preencher colunas e rows a 0
+        board.sort_unflooded()  # Vai empurrar as pecas 'M' para o fim da queue
         cycle = 0
-        while True:
-            initial_length = len(board.unflooded_pieces)  # Store the initial length of the list
-            board.flood_unflooded_pieces(cycle)
+        while len(board.unflooded_pieces) != 0:
+            initial_length = len(board.unflooded_pieces)    # Guarda o valor do tamanho antes da iteracao
+            board.flood_unflooded_pieces(cycle)             # Coloca agua a volta das pecas e remove da queue
             cycle += 1
-            if len(board.unflooded_pieces) == initial_length:
+            if len(board.unflooded_pieces) == initial_length:   # Caso nao haja alteracoes vai parar
                 break
 
         return board
@@ -102,7 +101,7 @@ class Board:
 
     def add_piece(self, row, col, new_piece):
         """ Executes change_tile, but if it is a boat piece it updates the limit
-        values for its row and column and adds water to nearby positions """
+        values for its row and column and adds to the queue to be flooded"""
 
         self.change_tile(row, col, new_piece)
         if self.is_boat_piece(new_piece):
