@@ -35,8 +35,7 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
-    """ Tem uma matriz que serve para representação do board, 
-    talvez mudar para 1 matriz e 2 tuplos ????"""
+    """ Tem uma matriz que serve para representação do board"""
 
     def __init__(self):
         self.matrix = [['_' for _ in range(11)] for _ in range(11)]
