@@ -30,7 +30,8 @@ class BimaruState:
     def __lt__(self, other):
         return self.id < other.id
 
-    # TODO: outros metodos da classe
+    def get_board(self):
+        return self.board
 
 
 class Board:
@@ -40,6 +41,7 @@ class Board:
     def __init__(self):
         self.matrix = [['_' for _ in range(11)] for _ in range(11)]
         self.unflooded_pieces = []
+        self.unexplored_pieces = []
 
     def get_value(self, row: int, col: int):
         """Devolve o valor na respetiva posição do tabuleiro. Se estiver
@@ -94,6 +96,9 @@ class Board:
         return board
 
     # Outros metodos da classe---------------------------------------------------------------
+
+    # Metodos para o parse
+
     def change_tile(self, row, col, new_piece):
         """ Changes the value in the position (row,col) of the board's matrix."""
         self.matrix[row][col] = new_piece
@@ -105,13 +110,17 @@ class Board:
         self.change_tile(row, col, new_piece)
         if self.is_boat_piece(new_piece):
             self.update_limits(row, col)
-            self.store_unflooded_piece(row, col, new_piece)
+            self.store_piece(row, col, new_piece)
 
-    def store_unflooded_piece(self, row, col, new_piece):
+    def store_piece(self, row, col, new_piece):
         self.unflooded_pieces.append((row, col, new_piece))
+        self.unexplored_pieces.append((row, col, new_piece))
 
     def sort_unflooded(self):
         self.unflooded_pieces = sorted(self.unflooded_pieces, key=lambda x: x[2] == 'M')
+
+    def is_unexplored_empty(self):
+        return not self.unexplored_pieces
 
     def limit_row(self, row):
         return self.matrix[row][10]
@@ -244,6 +253,10 @@ class Board:
 
             return tuple(adjacent_coords)
 
+    # Metodos para a procura
+
+    # Metodos temporarios (REMOVE ME)
+
     def print_matrix_nf(self):
         for row in self.matrix:
             print(row)
@@ -252,13 +265,13 @@ class Board:
 class Bimaru(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
-        # TODO
-        pass
+        super().__init__(board)
 
     def actions(self, state: BimaruState):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
-        # TODO
+        if not state.get_board().is_unexplored_empty():
+
         pass
 
     def result(self, state: BimaruState, action):
