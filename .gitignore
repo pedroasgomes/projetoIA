@@ -82,3 +82,6 @@ fabric.properties
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/misc.xml
 .idea/vcs.xml
+__pycache__/search.cpython-39.pyc
+bimaru-old.py
+__pycache__/utils.cpython-39.pyc
