@@ -35,12 +35,12 @@ class BimaruState:
 
 
 class Board:
-    """Representação interna de um tabuleiro de Bimaru."""
-    """ Tem uma matriz que serve para representação do board"""
+    """Representação interna de um tabuleiro de Bimaru.
+    Tem uma matriz que serve para representação do board e
+    uma lista das peças dadas nas hints """
 
     def __init__(self):
         self.matrix = [['_' for _ in range(11)] for _ in range(11)]
-        self.unflooded_pieces = []
         self.unexplored_pieces = []
 
     def get_value(self, row: int, col: int):
@@ -54,13 +54,15 @@ class Board:
 
     def adjacent_vertical_values(self, row: int, col: int):
         """Devolve os valores imediatamente acima e abaixo,
-        respectivamente."""
+        respetivamente. Devolve None se estiver fora do tabuleiro,
+        devolve '_' se nao houver peca"""
 
         return self.get_value(row - 1, col), self.get_value(row + 1, col)
 
     def adjacent_horizontal_values(self, row: int, col: int):
         """Devolve os valores imediatamente à esquerda e à direita,
-        respetivamente."""
+        respetivamente. Devolve None se estiver fora do tabuleiro,
+        devolve '_' se nao houver peca"""
 
         return self.get_value(row, col - 1), self.get_value(row, col + 1)
 
@@ -73,25 +75,19 @@ class Board:
         rows = sys.stdin.readline().split()
         columns = sys.stdin.readline().split()
 
-        board.change_tile(10, 10, 'X')  # Soh para diferenciar dos locais sem pecas
+        sum = 0
         for i in range(10):
-            board.change_tile(i, 10, rows[i + 1])
-            board.change_tile(10, i, columns[i + 1])
+            sum += rows[i + 1]
+            board.change_tile(i, 10, rows[i + 1])       # Guarda o número total de peças por colocar na row[i]
+            board.change_tile(10, i, columns[i + 1])    # Guarda o número total de peças por colocar na col[i]
+        board.change_tile(10, 10, str(sum))             # Guarda o número total de peças por colocar
 
         number_hints = sys.stdin.readline().split()
         for i in range(int(number_hints[0])):
             hint = sys.stdin.readline().split()
             board.add_piece(int(hint[1]), int(hint[2]), hint[3])
 
-        board.flood_col_row()   # Vai preencher colunas e rows a 0
-        board.sort_unflooded()  # Vai empurrar as pecas 'M' para o fim da queue
-        cycle = 0
-        while len(board.unflooded_pieces) != 0:
-            initial_length = len(board.unflooded_pieces)    # Guarda o valor do tamanho antes da iteracao
-            board.flood_unflooded_pieces(cycle)             # Coloca agua a volta das pecas e remove da queue
-            cycle += 1
-            if len(board.unflooded_pieces) == initial_length:   # Caso nao haja alteracoes vai parar
-                break
+        board.flood_col_row()                           # Vai preencher colunas e rows a 0 com 'w'
 
         return board
 
@@ -110,14 +106,10 @@ class Board:
         self.change_tile(row, col, new_piece)
         if self.is_boat_piece(new_piece):
             self.update_limits(row, col)
-            self.store_piece(row, col, new_piece)
+            self.store_unexplored_piece(row, col, new_piece)
 
-    def store_piece(self, row, col, new_piece):
-        self.unflooded_pieces.append((row, col, new_piece))
+    def store_unexplored_piece(self, row, col, new_piece):
         self.unexplored_pieces.append((row, col, new_piece))
-
-    def sort_unflooded(self):
-        self.unflooded_pieces = sorted(self.unflooded_pieces, key=lambda x: x[2] == 'M')
 
     def is_unexplored_empty(self):
         return not self.unexplored_pieces
@@ -131,6 +123,18 @@ class Board:
     def update_limits(self, row, col):
         self.matrix[10][col] = str(int(self.matrix[10][col]) - 1)
         self.matrix[row][10] = str(int(self.matrix[row][10]) - 1)
+        self.matrix[10][10] = str(int(self.matrix[10][10]) - 1)
+
+    def flood_col_row(self):
+        for i in range(10):
+            if self.limit_row(i) == '0':
+                for j in range(10):
+                    if self.is_empty(self.get_value(i, j)):
+                        self.change_tile(i, j, 'w')
+            if self.limit_column(i) == '0':
+                for j in range(10):
+                    if self.is_empty(self.get_value(j, i)):
+                        self.change_tile(j, i, 'w')
 
     def is_boat_piece(self, piece):
         return piece.upper() in ['T', 'B', 'L', 'R', 'C', 'M']
@@ -146,24 +150,6 @@ class Board:
 
     def is_inside_board(self, row, col):
         return (0 <= row <= 9) and (0 <= col <= 9)
-
-    def flood_unflooded_pieces(self, cycle):
-        if not self.unflooded_pieces:
-            return
-        else:
-            for x in self.unflooded_pieces[:]:
-                self.flood_tiles(x[0], x[1], x[2], cycle)
-
-    def flood_col_row(self):
-        for i in range(10):
-            if self.limit_row(i) == '0':
-                for j in range(10):
-                    if self.is_empty(self.get_value(i, j)):
-                        self.change_tile(i, j, 'w')
-            if self.limit_column(i) == '0':
-                for j in range(10):
-                    if self.is_empty(self.get_value(j, i)):
-                        self.change_tile(j, i, 'w')
 
     def middle_has_orientation(self, row, col):
         """
@@ -191,68 +177,6 @@ class Board:
     def middle_is_horizontal(self, row, col):
         return self.middle_has_orientation(row, col) == 2
 
-    def flood_tiles(self, row, col, piece, cycle_number):
-
-        adjacent_coordinates = self.get_adjacent_coordinates(row, col, piece, cycle_number)
-
-        for x in adjacent_coordinates:
-            if self.is_inside_board(x[0], x[1]):
-                self.change_tile(x[0], x[1], 'w')
-
-        if self.is_middle_piece(piece) and not self.middle_has_orientation(row, col):
-            return
-        else:
-            self.unflooded_pieces.remove((row, col, piece))
-            return
-
-    def get_adjacent_coordinates(self, row, col, piece, cycle_number):
-
-        if piece == 'C':
-            adjacent_coords = [(row + i, col + j) for i in range(-1, 2) for j in range(-1, 2)
-                               if not (i == 0 and j == 0)]
-            return tuple(adjacent_coords)
-
-        elif piece == 'T':
-            adjacent_coords = [(row + i, col + j) for i in range(-1, 3) for j in range(-1, 2)
-                               if not (i == 0 and j == 0) and not (i == 1 and j == 0)
-                               and not (i == 2 and j == 0)]
-            return tuple(adjacent_coords)
-
-        elif piece == 'B':
-            adjacent_coords = [(row + i, col + j) for i in range(-2, 2) for j in range(-1, 2)
-                               if not (i == 0 and j == 0) and not (i == -1 and j == 0)
-                               and not (i == -2 and j == 0)]
-            return tuple(adjacent_coords)
-
-        elif piece == 'L':
-            adjacent_coords = [(row + i, col + j) for i in range(-1, 2) for j in range(-1, 3)
-                               if not (i == 0 and j == 0) and not (i == 0 and j == 1)
-                               and not (i == 0 and j == 2)]
-            return tuple(adjacent_coords)
-
-        elif piece == 'R':
-            adjacent_coords = [(row + i, col + j) for i in range(-1, 2) for j in range(-2, 2)
-                               if not (i == 0 and j == 0) and not (i == 0 and j == -1)
-                               and not (i == 0 and j == -2)]
-            return tuple(adjacent_coords)
-
-        elif piece == 'M':
-
-            if cycle_number == 0:   # Coloca sempre as pontas, msm se nao encontrar orientacao
-                adjacent_coords = [(row+1, col+1), (row+1, col-1), (row-1, col+1), (row-1, col-1)]
-            else:
-                adjacent_coords = []
-
-            if self.middle_is_vertical(row, col):
-                adjacent_coords.append((row, col + 1))
-                adjacent_coords.append((row, col - 1))
-
-            elif self.middle_is_horizontal(row, col):
-                adjacent_coords.append((row - 1, col))
-                adjacent_coords.append((row + 1, col))
-
-            return tuple(adjacent_coords)
-
     # Metodos para a procura
 
     # Metodos temporarios (REMOVE ME)
@@ -271,7 +195,7 @@ class Bimaru(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         if not state.get_board().is_unexplored_empty():
-
+            pass
         pass
 
     def result(self, state: BimaruState, action):
