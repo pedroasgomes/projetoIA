@@ -77,7 +77,7 @@ class Board:
 
         sum = 0
         for i in range(10):
-            sum += rows[i + 1]
+            sum += int(rows[i + 1])
             board.change_tile(i, 10, rows[i + 1])       # Guarda o número total de peças por colocar na row[i]
             board.change_tile(10, i, columns[i + 1])    # Guarda o número total de peças por colocar na col[i]
         board.change_tile(10, 10, str(sum))             # Guarda o número total de peças por colocar
@@ -136,20 +136,26 @@ class Board:
                     if self.is_empty(self.get_value(j, i)):
                         self.change_tile(j, i, 'w')
 
-    def is_boat_piece(self, piece):
-        return piece.upper() in ['T', 'B', 'L', 'R', 'C', 'M']
-
-    def is_middle_piece(self, piece):
-        return piece.upper() == 'M'
-
-    def is_water_piece(self, piece):
-        return piece.upper() == 'W'
+    def is_inside_board(self, row, col):
+        return (0 <= row <= 9) and (0 <= col <= 9)
 
     def is_empty(self, piece):
         return piece == '_'
 
-    def is_inside_board(self, row, col):
-        return (0 <= row <= 9) and (0 <= col <= 9)
+    def is_boat_piece(self, piece):
+        return piece.upper() in ['T', 'B', 'L', 'R', 'C', 'M']
+
+    def is_water_piece(self, piece):
+        return piece.upper() == 'W'
+
+    def is_middle_piece(self, piece):
+        return piece.upper() == 'M'
+
+    def middle_is_vertical(self, row, col):
+        return self.middle_has_orientation(row, col) == 1
+
+    def middle_is_horizontal(self, row, col):
+        return self.middle_has_orientation(row, col) == 2
 
     def middle_has_orientation(self, row, col):
         """
@@ -170,12 +176,6 @@ class Board:
             return 2
         else:
             return 0
-
-    def middle_is_vertical(self, row, col):
-        return self.middle_has_orientation(row, col) == 1
-
-    def middle_is_horizontal(self, row, col):
-        return self.middle_has_orientation(row, col) == 2
 
     # Metodos para a procura
 
