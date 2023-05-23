@@ -312,9 +312,19 @@ class Board:
 
     # Metodos especificos para fora da classe State
 
+    # TODO ############################################## IDKKKKKK ##############################################
+
+    def get_possible_boats_row(self, row):
+
+        actions = []
+
+
+
+        return actions
+
     # TODO ############################################## ACTIONS ##############################################
 
-    def get_hint_based_actions(self):
+    def get_hint_based_actions(self):   # Retorna uma ou mais actions com um unico move
 
         row, col, piece = self.get_first_hint()
         self.remove_unexplored_hint(row, col, piece)
@@ -427,14 +437,38 @@ class Board:
         elif self.is_unknown_piece(piece):
             pass
 
-
         return actions
 
-    def get_guess_based_actions(self): # Retorna uma ou mais actions com um unico move
-        pass
+    def get_guess_based_actions(self):  # Retorna uma ou mais actions com um unico move
+
+        size = max(self.get_available_sizes())
+        rows = []
+        cols = []
+        actions = []
+
+        for i in range(10):
+
+            if self.get_bpieces_left_row(i) >= size: # UNICAS ROWS POSSIVEIS
+                rows.append(i)
+
+            if self.get_bpieces_left_col(i) >= size: # UNICAS COLS POSSIVEIS
+                cols.append(i)
+
+        # AGORA É SÓ VER DENTRO DESSAS QUAIS SÃO OS BOATS DE SIZE POSSIBEL, SE É QUE EXISTEM
+
+        for row in rows:
+            actions.extend(self.get_possible_boats_row(row))
+
+
+
+
+
+
+
+
+
 
     # TODO ############################################## RESULT ##############################################
-
 
     def place_boats(self, action):
         """ Returns a copy of the initial state with the adition
