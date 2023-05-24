@@ -682,8 +682,6 @@ class Board:
                 continue
 
             if self.is_boat_piece(self.get_value(new_row, new_col)):
-                print("conaaaaaaaa")
-                print(new_row, new_col, self.get_value(new_row, new_col))
                 print("\n\n ILLEGAL RESULT NODE -> CREATING A WATER ON ALREADY FILLED TILES (Excluding water e outofbounds) [BUG??]  \n\n")
                 return 1
 
@@ -739,7 +737,9 @@ class Bimaru(Problem):
 
         if not state.get_board().is_unexplored_empty():
             actions = state.get_board().get_hint_based_actions()  # Retorna uma unica action com 1 move
-            if actions:
+            if actions is None or len(actions) == 0:
+                return []
+            else:
                 return actions
 
         print("##############################")
@@ -751,10 +751,10 @@ class Bimaru(Problem):
         print("##############################")
 
         actions = state.get_board().get_guess_based_actions()  # Retorna varias actions com 1 move
-        if actions:
+        if actions is None or len(actions) == 0:
+            return []
+        else:
             return actions
-
-        return []
 
         # TODO RETORNA LISTA DE ACTIONS-----------
 
