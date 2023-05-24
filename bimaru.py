@@ -314,11 +314,53 @@ class Board:
 
     # TODO ############################################## IDKKKKKK ##############################################
 
-    def get_possible_boats_row(self, row):
+    def get_possible_boats_row(self, row, size):
 
         actions = []
 
+        i = 0
+        while i < 10:
+            max_size = 0
 
+            while i + max_size < 10 and self.is_empty(self.get_value(row, i  + max_size)):
+                max_size += 1
+
+            if max_size == size:
+                actions.append((row, i, size, 0, 0))
+                j = 1
+                while i + j + max_size < 10 and self.is_empty(self.get_value(row, i + j + max_size)):
+                    actions.append((row, i + j, size, 0, 0))
+                    j += 1
+
+                i = i + max_size + j
+
+            else:
+                i += 1
+
+        return actions
+
+    def get_possible_boats_col(self, col, size):
+
+        actions = []
+
+        i = 0
+        while i < 10:
+            max_size = 0
+
+            while i + max_size < 10 and self.is_empty(self.get_value(i + max_size, col)):
+                max_size += 1
+
+            if max_size == size:
+                actions.append((i, col, size, 1, 0))
+                j = 1
+                while i + j + max_size < 10 and self.is_empty(self.get_value(i + j + max_size, col)):
+                    actions.append((i + j, col, size, 1, 0))
+                    j += 1
+
+                i = i + max_size + j
+
+            else:
+                i += 1
 
         return actions
 
@@ -457,16 +499,11 @@ class Board:
         # AGORA É SÓ VER DENTRO DESSAS QUAIS SÃO OS BOATS DE SIZE POSSIBEL, SE É QUE EXISTEM
 
         for row in rows:
-            actions.extend(self.get_possible_boats_row(row))
+            actions.extend(self.get_possible_boats_row(row, size))
+        for col in cols:
+            actions.extend(self.get_possible_boats_col(col, size))
 
-
-
-
-
-
-
-
-
+        return actions
 
     # TODO ############################################## RESULT ##############################################
 
