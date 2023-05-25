@@ -242,10 +242,8 @@ class Board:
                         size += 1
 
                     if size == 1:
-                        if all(value in ('w', 'W', None) for value in self.adjacent_horizontal_values(i, j)):
-                            action.append([j, i, size, 1, 0])
-
-                        elif all(value in ('w', 'W', None) for value in self.adjacent_vertical_values(i, j)):
+                        if all(value in ('w', 'W', None) for value in self.adjacent_horizontal_values(j, i)) and \
+                                all(value in ('w', 'W', None) for value in self.adjacent_vertical_values(j, i)):
                             action.append([j, i, size, 1, 0])
 
                         j += size
@@ -489,26 +487,29 @@ class Board:
         elif self.is_middle_piece(piece):
             middle_orientation = self.middle_has_orientation(row, col)
             if middle_orientation == 1:  # middle is vertical
-                if self.get_value(row, col - 1) == 'M':
-                    return [[(row, col - 2, 4, 1, 2)]]
-
-                if self.get_value(row, col + 1) == 'M':
-                    return [[(row, col - 1, 4, 1, 2)]]
-
-                else:
-                    actions.append([(row, col - 1, 3, 1, 1)])
-                    actions.append([(row, col - 1, 4, 1, 1)])
-                    actions.append([(row, col - 2, 4, 1, 1)])
-
-            if middle_orientation == 2:  # middle is horizontal
                 if self.get_value(row - 1, col) == 'M':
-                    return [[(row - 2, col, 4, 0, 2)]]
+                    return [[(row - 2, col, 4, 1, 2)]]
 
                 if self.get_value(row + 1, col) == 'M':
-                    return [[(row - 1, col, 4, 0, 2)]]
+                    return [[(row - 1, col, 4, 1, 2)]]
+
+                else:
+                    actions.append([(row - 1, col, 3, 1, 1)])
+                    if self.get_value(row + 2, col) == '.':
+                        actions.append([(row - 1, col, 4, 1, 1)])
+                    if self.get_value(row - 2, col) == '.':
+                        actions.append([(row - 2, col, 4, 1, 1)])
+
+            if middle_orientation == 2:  # middle is horizontal
+                if self.get_value(row, col - 1) == 'M':
+                    return [[(row, col - 2, 4, 0, 2)]]
+
+                if self.get_value(row + 1, col) == 'M':
+                    return [[(row, col - 1, 4, 0, 2)]]
 
                 else:
                     actions.append([(row, col - 1, 3, 1, 1)])
+
                     if self.get_value(row + 2, col) == '.':
                         actions.append([(row, col - 1, 4, 1, 1)])
                     if self.get_value(row - 2, col) == '.':
@@ -549,8 +550,12 @@ class Board:
         the rules) the return is instead None. """
         # TODO THIS FUNCTION WILL NOT RETURN NONE IF USE THE CAN_BOAT_FIT
 
-        print(len(action))
+        print("#############-BEFORE-#################")
         print(action)
+        self.print()
+        print("#############-AFTER-#################")
+
+
         for move in action:
             print(move)
             row, col, size, orientation, hints = move
@@ -598,6 +603,10 @@ class Board:
             else:  # Horizontal Orientation
                 if self.place_boat_long_horizontal(row, col, size):
                     return None
+
+        self.print()
+        print("#############-END-#################")
+
 
         self.flood_lines()
         logic_action = self.marshal_lines()  # Vai preencher colunas cujo espaço livre = peças por colocar
@@ -735,20 +744,15 @@ class Bimaru(Problem):
         actions e cada action pode ter varias jogadas em cadeia. A funcao result
         aceita então um tuplo de jogadas. OU SEJA UMA ACAO E UM TUPLO DE JOGADAS"""
 
+        if state is None:
+            return []
+
         if not state.get_board().is_unexplored_empty():
             actions = state.get_board().get_hint_based_actions()  # Retorna uma unica action com 1 move
             if actions is None or len(actions) == 0:
                 return []
             else:
                 return actions
-
-        print("##############################")
-        print("##############################")
-        print("##############################")
-        print(state.get_board().print())
-        print("##############################")
-        print("##############################")
-        print("##############################")
 
         actions = state.get_board().get_guess_based_actions()  # Retorna varias actions com 1 move
         if actions is None or len(actions) == 0:
@@ -765,9 +769,8 @@ class Bimaru(Problem):
         self.actions(state)."""
 
         new_board = copy.deepcopy(state.get_board())
-        new_board.place_boats(action)
 
-        if new_board is None:
+        if new_board.place_boats(action) is None:
             return None
         else:
             return BimaruState(new_board)
@@ -776,8 +779,10 @@ class Bimaru(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        if state.get_board().all_boats_placed():
+        if state is not None and state.get_board().all_boats_placed():
             return True
+        else:
+            return False
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
@@ -797,7 +802,7 @@ if __name__ == "__main__":
     board = Board.parse_instance()
     problem = Bimaru(board)
     initial_state = BimaruState(board)
-    goal_node = depth_first_tree_search(problem)
+    goal_node = breadth_first_tree_search(problem)
 
     print("Is goal?", problem.goal_test(goal_node.state))
     print("Solution:\n", goal_node.state.board.print(), sep="")
