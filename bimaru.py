@@ -20,6 +20,7 @@ from search import (
 )
 
 
+
 class BimaruState:
     state_id = 0
 
@@ -36,7 +37,6 @@ class BimaruState:
         return self.board
     # TODO ############################################## ILEGAL ##############################################
 
-
 class Board:
     """Representação interna de um tabuleiro de Bimaru.
     Tem uma matriz que serve para representação do board e
@@ -50,6 +50,17 @@ class Board:
         self.empty_spaces_col = ['10' for _ in range(10)]
         self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
         self.unexplored_hints = []
+
+    def __str__(self):
+        result = ""
+        for row in self.matrix:
+            for cell in row:
+                if cell == 'w':
+                    result += '.'
+                else:
+                    result += cell
+            result += '\n'
+        return result
 
     def get_value(self, row: int, col: int):
         """Devolve o valor na respetiva posição do tabuleiro. Se estiver
@@ -93,18 +104,7 @@ class Board:
             board.add_hint(int(hint[1]), int(hint[2]), hint[3])
         board.sort_unexplored()  # Vai meter hints com M no fim da queue
 
-        board.flood_lines()  # Vai preencher colunas e rows a 0 com 'w'
-        logic_action = board.marshal_lines()  # Vai preencher colunas cujo espaço livre = peças por colocar
-
-        while True:
-            if logic_action is None:
-                return None
-            elif len(logic_action) == 0:
-                break  # Empty list, exit the loop
-            else:
-                board.place_boats(logic_action)
-                board.flood_lines()
-                logic_action = board.marshal_lines()
+        board.logic_away()
 
         return board
 
@@ -204,9 +204,11 @@ class Board:
                     if self.is_empty(self.get_value(j, i)):
                         self.add_piece(j, i, 'w')
 
-    def marshal_lines(self):  # DOESNT GUESS 1'S
+    def get_action_for_masrshal(self):  # DOESNT GUESS 1'S
 
         action = []
+
+        boats_copy = self.boats.copy()
 
         for i in range(10):
 
@@ -214,18 +216,24 @@ class Board:
                 j = 0
                 while j < 10:
                     size = 0
-                    while j + size < 10 and self.is_empty(self.get_value(i, j + size)):
+                    while (j + size < 10) and (self.get_value(i, j + size) not in ('w', 'W', None)):
                         size += 1
 
                     if size == 1:
                         if all(value in ('w', 'W', None) for value in self.adjacent_horizontal_values(i, j)) and \
                                 all(value in ('w', 'W', None) for value in self.adjacent_vertical_values(i, j)):
-                            action.append([i, j, size, 1, 0])
+                            boats_copy[size - 1] -= 1
+                            if boats_copy[size - 1] < 0:
+                                return None
+                            action.append([i, j, size, 0, 0])
 
                         j += size
 
                     elif 2 <= size <= 4:
-                        action.append([i, j, size, 1, 0])
+                        boats_copy[size - 1] -= 1
+                        if boats_copy[size - 1] < 0:
+                            return None
+                        action.append([i, j, size, 0, 0])
                         j += size
 
                     elif size >= 5:
@@ -238,17 +246,23 @@ class Board:
                 j = 0
                 while j < 10:
                     size = 0
-                    while j + size < 10 and self.is_empty(self.get_value(j + size, i)):
+                    while (j + size < 10) and (self.get_value(j + size, i) not in ('w', 'W', None, 't', 'b', 'm', '')):
                         size += 1
 
                     if size == 1:
                         if all(value in ('w', 'W', None) for value in self.adjacent_horizontal_values(j, i)) and \
                                 all(value in ('w', 'W', None) for value in self.adjacent_vertical_values(j, i)):
+                            boats_copy[size] -= 1
+                            if boats_copy[size] < 0:
+                                return None
                             action.append([j, i, size, 1, 0])
 
                         j += size
 
                     elif 2 <= size <= 4:
+                        boats_copy[size] -= 1
+                        if boats_copy[size] < 0:
+                            return None
                         action.append([j, i, size, 1, 0])
                         j += size
 
@@ -259,6 +273,28 @@ class Board:
                         j += 1
 
         return action
+
+    def marshal_lines(self):
+
+        output = self.get_action_for_masrshal()
+
+        if output is None:
+            return None
+        elif len(output) == 0:
+            return 0
+        else:
+            return self.place_boats(output)
+
+    def logic_away(self):
+
+        self.flood_lines()
+        output = self.marshal_lines()
+
+        while output is not None and output != 0:
+            self.flood_lines()
+            output = self.marshal_lines()
+
+        return output
 
     # TODO ############################################## STATIC ##############################################
 
@@ -386,7 +422,7 @@ class Board:
         hints = 1
 
         if self.is_center_piece(piece):
-            return [[(row, col, 1, 0, 0)]]
+            return [[(row, col, 1, 0, hints)]]
 
         elif self.is_top_piece(piece):
             for size in self.get_available_sizes():  # This e excludes size 1
@@ -550,10 +586,13 @@ class Board:
         the rules) the return is instead None. """
         # TODO THIS FUNCTION WILL NOT RETURN NONE IF USE THE CAN_BOAT_FIT
 
-        print("#############-BEFORE-#################")
+        print("----------------------BEFORE----------------------")
         print(action)
-        self.print()
-        print("#############-AFTER-#################")
+        self.print_matrix_nf()
+        self.print_rows_cols_limit()
+        self.print_boats()
+        self.print_hints()
+        print("----------------------AFTER----------------------")
 
 
         for move in action:
@@ -604,23 +643,12 @@ class Board:
                 if self.place_boat_long_horizontal(row, col, size):
                     return None
 
-        self.print()
-        print("#############-END-#################")
+        self.print_matrix_nf() #TODO APAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        self.print_rows_cols_limit()
+        self.print_boats()
+        self.print_hints()
 
-
-        self.flood_lines()
-        logic_action = self.marshal_lines()  # Vai preencher colunas cujo espaço livre = peças por colocar
-
-        while True:
-            if logic_action is None:
-                return None
-            elif len(logic_action) == 0:
-                break  # Empty list, exit the loop
-            else:
-                if self.place_boats(logic_action) is None:
-                    return None
-                self.flood_lines()
-                logic_action = self.marshal_lines()
+        self.logic_away()
 
         return self
 
@@ -725,6 +753,28 @@ class Board:
         print('cols available:')
         print(self.empty_spaces_col)
 
+    def print_boats(self):
+
+        print("Size 1:", self.boats[0], " Size 2:", self.boats[1], " Size 3:", self.boats[2], " Size 4:", self.boats[3])
+
+    def print_hints(self):
+
+        print("Hints:", self.unexplored_hints)
+
+    def print_board(self):
+        """Imprime o tabuleiro"""
+        app = Application(self.matrix, self.bpieces_left_row, self.bpieces_left_col)
+        app.mainloop()
+
+    def print(self):
+        for row in self.matrix:
+            for cell in row:
+                if cell == 'w':
+                    print('.', end='')
+                else:
+                    print(cell, end='')
+            print()
+
     # TODO ############################################## END ##############################################
     # TODO ############################################## END ##############################################
     # TODO ############################################## END ##############################################
@@ -804,7 +854,10 @@ if __name__ == "__main__":
     initial_state = BimaruState(board)
     goal_node = breadth_first_tree_search(problem)
 
+    from gui import Application
+
     print("Is goal?", problem.goal_test(goal_node.state))
-    print("Solution:\n", goal_node.state.board.print(), sep="")
+    print("Solution:\n", goal_node.state.board , sep="")
+    goal_node.state.board.print_board()
 
     pass
