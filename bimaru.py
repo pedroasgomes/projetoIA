@@ -192,6 +192,8 @@ class Board:
         self.empty_spaces_row[row] = str(int(self.empty_spaces_row[row]) - 1)
         self.empty_spaces_col[col] = str(int(self.empty_spaces_col[col]) - 1)
 
+    # TODO ############################################## BIG LOGIC ##############################################
+
     def flood_lines(self):
         for i in range(10):
             if self.get_bpieces_left_row(i) == '0':
@@ -204,7 +206,7 @@ class Board:
                     if self.is_empty(self.get_value(j, i)):
                         self.add_piece(j, i, 'w')
 
-    def get_action_for_masrshal(self):  # DOESNT GUESS 1'S
+    def get_action_for_masrshal(self):  # DOESNT GUESS 1'S -> dumbass idea
 
         action = []
 
@@ -227,6 +229,8 @@ class Board:
                                 return None
                             action.append([i, j, size, 0, 0])
 
+                        else:
+                            self.add_hint(i, j, 'U')
                         j += size
 
                     elif 2 <= size <= 4:
@@ -256,6 +260,8 @@ class Board:
                             if boats_copy[size] < 0:
                                 return None
                             action.append([j, i, size, 1, 0])
+                        else:
+                            self.add_hint(i, j, 'U')
 
                         j += size
 
@@ -699,7 +705,7 @@ class Board:
             water_pieces.append(0)
 
         elif self.get_value(row, col) not in ('.', None):
-            if self.get_value(row, col).lower() != piece:
+            if self.get_value(row, col).lower() != piece and self.is_unknown_piece(self.get_value(row, col)):
                 print("\n\n ILLEGAL RESULT NODE -> CREATING A BOATS ON ALREADY FILLED TILES (Excluding Hints of the Boat in Question) [BUG?]  \n\n")
                 return 1
 
@@ -734,6 +740,16 @@ class Board:
             if self.get_boats_left(size) != 0:
                 return False
         return True
+
+    def all_lines_completed(self):
+        """Verifica se todas as rows e columns têm o devido número
+        de boat pieces e se todos os tiles estão preenchidos"""
+        for i in range(10):
+            if (self.get_bpieces_left_row(i) != 0) and (self.get_bpieces_left_col(i) != 0) and \
+                (self.get_empty_spaces_row(i) != 0) and (self.get_empty_spaces_col(i) != 0):
+                return False
+        return True
+
 
     # TODO ############################################## TO BE DELETED ##############################################
 
@@ -829,7 +845,7 @@ class Bimaru(Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        if state is not None and state.get_board().all_boats_placed():
+        if (state is not None) and (state.get_board().all_boats_placed()) and (state.get_board().all_lines_completed()):
             return True
         else:
             return False
