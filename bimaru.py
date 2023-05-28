@@ -38,9 +38,7 @@ class BimaruState:
     # TODO ############################################## ILEGAL ##############################################
 
 class Board:
-    """Representação interna de um tabuleiro de Bimaru.
-    Tem uma matriz que serve para representação do board e
-    uma lista das peças dadas nas hints """
+    """Representação interna de um tabuleiro de Bimaru."""
 
     def __init__(self):
         self.matrix = [['.' for _ in range(10)] for _ in range(10)]
@@ -95,27 +93,20 @@ class Board:
         columns = sys.stdin.readline().split()
 
         for i in range(10):
-            board.bpieces_left_row.append(rows[i + 1])  # Guarda o número total de peças por colocar na row[i]
-            board.bpieces_left_col.append(columns[i + 1])  # Guarda o número total de peças por colocar na col[i]
+            board.bpieces_left_row.append(rows[i + 1])          # Guarda o número total de peças por colocar na row[i]
+            board.bpieces_left_col.append(columns[i + 1])       # Guarda o número total de peças por colocar na col[i]
 
         number_hints = sys.stdin.readline().split()
         for j in range(int(number_hints[0])):
             hint = sys.stdin.readline().split()
             board.add_hint(int(hint[1]), int(hint[2]), hint[3])
-        board.sort_unexplored()  # Vai meter hints com M no fim da queue
+        board.sort_unexplored()                                 # Vai meter hints com M no fim da queue
 
-        board.logic_away()
+        board.logic_away() # TODO OOOOOOOOOOOOOOOOOO 1337
 
         return board
 
     # Outros metodos da classe---------------------------------------------------------------
-
-    def print(self):
-        for row in self.matrix:
-            print(row)
-
-    # Metodos para o parse
-
     # TODO ############################################## GETTERS E SETTER COM LOGICA ##############################################
 
     def change_tile(self, row, col, piece):
@@ -124,20 +115,39 @@ class Board:
 
     def add_piece(self, row, col, piece):
 
-        if self.is_inside_board(row, col):
-            self.change_tile(row, col, piece)
-            self.update_empty_spaces(row, col)
-            if self.is_boat_piece(piece):
-                self.update_bpieces_left(row, col)
+        if self.is_boat_piece(piece):
+            self.update_bpieces_left(row, col)
+        self.change_tile(row, col, piece)
+        self.update_empty_spaces(row, col)
 
     def add_hint(self, row, col, piece):
 
-        if self.is_inside_board(row, col):
-            if self.is_water_piece(piece):
-                self.add_piece(row, col, piece)
-            else:
-                self.add_piece(row, col, piece)
-                self.store_unexplored_hint(row, col, piece)
+        if self.is_water_piece(piece):
+            self.add_piece(row, col, piece)
+        elif self.is_center_piece(piece):
+            self.place_boat(row, col, 1, 0, 0)
+        else:
+            self.add_piece(row, col, piece)
+            self.store_unexplored_hint(row, col, piece)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
 
     def store_unexplored_hint(self, row, col, new_piece):
         self.unexplored_hints.append((row, col, new_piece))
@@ -148,7 +158,7 @@ class Board:
     def sort_unexplored(self):
         """ Coloca pecas 'M' no fim da queue jah que essas pecas podem nao ter
         orientacao e podem aumentar a ramificacao desnecessariamente."""
-        self.unexplored_hints = sorted(self.unexplored_hints, key=lambda x: (x[2] != 'C', x[2] == 'M'))
+        self.unexplored_hints = sorted(self.unexplored_hints, key=lambda x: (x[2] == 'M'))
 
     def is_unexplored_empty(self):
         return not self.unexplored_hints
@@ -191,6 +201,103 @@ class Board:
     def update_empty_spaces(self, row, col):
         self.empty_spaces_row[row] = str(int(self.empty_spaces_row[row]) - 1)
         self.empty_spaces_col[col] = str(int(self.empty_spaces_col[col]) - 1)
+
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
+
+
+
+
+
+
+
+
+
+
+
+
+    # TODO ############################################## STATIC ##############################################
+
+    @staticmethod
+    def is_inside_board(row, col):
+        return (0 <= row <= 9) and (0 <= col <= 9)
+
+    # ----- Group of static functions responsible for identifying the different pieces -----
+
+    @staticmethod
+    def is_hint_piece(self, piece):
+        return piece.isupper()
+
+    @staticmethod
+    def is_new_piece(self, piece):
+        return piece.islower()
+
+    @staticmethod
+    def is_empty(self, piece):
+        return piece == '.'
+
+    @staticmethod
+    def is_water_piece(self, piece):
+        return piece.upper() == 'W'
+
+    @staticmethod
+    def is_boat_piece(self, piece):
+        return piece.upper() in ['C', 'T', 'B', 'L', 'R', 'M', 'U']
+
+    @staticmethod
+    def is_center_piece(self, piece):
+        return piece.upper() == 'C'
+
+    @staticmethod
+    def is_top_piece(self, piece):
+        return piece.upper() == 'T'
+
+    @staticmethod
+    def is_bot_piece(self, piece):
+        return piece.upper() == 'B'
+
+    @staticmethod
+    def is_left_piece(self, piece):
+        return piece.upper() == 'L'
+
+    @staticmethod
+    def is_right_piece(self, piece):
+        return piece.upper() == 'R'
+
+    @staticmethod
+    def is_middle_piece(self, piece):
+        return piece.upper() == 'M'
+
+    @staticmethod
+    def is_unknown_piece(self, piece):
+        return piece.upper() == 'U'
+
+    # --------------------------------------------- End ---------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
 
     # TODO ############################################## BIG LOGIC ##############################################
 
@@ -301,41 +408,6 @@ class Board:
             output = self.marshal_lines()
 
         return output
-
-    # TODO ############################################## STATIC ##############################################
-
-    def is_inside_board(self, row, col):
-        return (0 <= row <= 9) and (0 <= col <= 9)
-
-    def is_empty(self, piece):
-        return piece == '.'
-
-    def is_water_piece(self, piece):
-        return piece.upper() == 'W'
-
-    def is_boat_piece(self, piece):
-        return piece.upper() in ['T', 'B', 'L', 'R', 'C', 'M', 'U']
-
-    def is_center_piece(self, piece):
-        return piece.upper() == 'C'
-
-    def is_top_piece(self, piece):
-        return piece.upper() == 'T'
-
-    def is_bot_piece(self, piece):
-        return piece.upper() == 'B'
-
-    def is_left_piece(self, piece):
-        return piece.upper() == 'L'
-
-    def is_right_piece(self, piece):
-        return piece.upper() == 'R'
-
-    def is_middle_piece(self, piece):
-        return piece.upper() == 'M'
-
-    def is_unknown_piece(self, piece):
-        return piece.upper() == 'U'
 
     def middle_is_vertical(self, row, col):
         return self.middle_has_orientation(row, col) == 1
@@ -584,174 +656,207 @@ class Board:
         print(actions)
         return actions
 
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
+    # TODO ############################################## TOMORROW ##############################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # TODO ############################################## RESULT ##############################################
 
-    def place_boats(self, action):
-        """ Returns a copy of the initial state with the adition
-        of the new boat. If the boat is impossible (it violates
-        the rules) the return is instead None. """
-        # TODO THIS FUNCTION WILL NOT RETURN NONE IF USE THE CAN_BOAT_FIT
+    def place_boat(self, row, col, size, orientation, hints):
+        """ Signigicado das hints é: peças que pertencem ao barco e ja se encontram no tabuleiro e ja têm os
+        valores em consideracao no cálculo da informacao das linhas e colunas"""
 
+        # TODO DELETE THIS
         print("----------------------BEFORE----------------------")
-        print(action)
+        print([row, col, size, orientation, hints])
         self.print_matrix_nf()
         self.print_rows_cols_limit()
         self.print_boats()
         self.print_hints()
         print("----------------------AFTER----------------------")
 
+        # Verifica se o barco dado é valido
+        if self.boat_not_valid(row, col, size, orientation, hints):
+            return 1
 
-        for move in action:
-            print(move)
-            row, col, size, orientation, hints = move
+        # Atualiza o número de barcos que faltam para o respetivo tamanho (nunca é < 0)
+        self.update_boats_left(size)
 
-            if orientation and size > int(self.get_bpieces_left_col(col)) + hints:  # is vertical
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE MORE THAN BPIECES LEFT (v) [BUG]  \n\n")
-                print(row, col, size, orientation)
-                return None
+        # Boat of size 1
+        if size == 1:
+            if self.place_boat_single(row, col):
+                return 1
+        # Vertical Orientation of size > 2
+        elif orientation:
+            if self.place_boat_long_vertical(row, col, size):
+                return 1
+        # Horizontal Orientation of size > 2
+        else:
+            if self.place_boat_long_horizontal(row, col, size):
+                return 1
 
-            elif not orientation and size > int(self.get_bpieces_left_row(row)) + hints:  # is horizontal
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE MORE THAN BPIECES LEFT (h) [BUG]  \n\n")
-                print(row, col, size, orientation)
-                return None
-
-            elif orientation and size + row > 10:  # is vertical
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT THAT EXTENDS THE BOARD (v) [BUG]  \n\n")
-                print(row, col, size, orientation)
-                return None
-
-            elif not orientation and size + col > 10:  # is horizontal
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT THAT EXTENDS THE BOARD (h) [BUG]  \n\n")
-                print(row, col, size, orientation)
-                return None
-
-            elif size > 4:
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE MORE THAN 4 [BUG]  \n\n")
-                print(row, col, size, orientation)
-                return None
-
-            elif not self.boats[size - 1]:
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE ALREADY CLOSED [BUG]  \n\n")
-                print(row, col, size, orientation)
-                return None
-
-            # TODO ----------------- VERIFICATION ----------------------------------------------------------------
-
-            self.update_boats_left(size)
-
-            if size == 1:
-                if self.place_boat_single(row, col):
-                    return None
-            elif orientation:  # Vertical Orientation
-                if self.place_boat_long_vertical(row, col, size):
-                    return None
-            else:  # Horizontal Orientation
-                if self.place_boat_long_horizontal(row, col, size):
-                    return None
-
-        self.print_matrix_nf() #TODO APAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        # TODO DELETE THIS
+        print([row, col, size, orientation, hints])
+        self.print_matrix_nf()
         self.print_rows_cols_limit()
         self.print_boats()
         self.print_hints()
 
-        self.logic_away()
-
         return self
+
+    def boat_not_valid(self, row, col, size, orientation, hints):
+        """ Verifica se o barco dado como 'input' não viola regras triviais de barcos """
+
+        # Verifica se o novo barco (vertical) não ultrapassa o limite da respetiva coluna
+        # [As hints incluidas não são tidas em conta já que são contablizamos na criação]
+        if orientation and (size - hints) > int(self.get_bpieces_left_col(col)):
+            print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE > BPIECES LEFT [BUG]  \n\n")
+            print(row, col, size, orientation, hints)
+            return True
+
+        # Verifica se o novo barco (horizontal) não ultrapassa o limite da respetiva linha
+        # [As hints incluidas não são tidas em conta já que são contablizadas na criação]
+        elif not orientation and (size - hints) > int(self.get_bpieces_left_row(row)):
+            print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE MORE THAN BPIECES LEFT [BUG]  \n\n")
+            print(row, col, size, orientation, hints)
+            return True
+
+        # Verifica se o novo barco (vertical) não se extende para fora do tabuleiro
+        elif orientation and (row < 0 or size + row > 10 ):  # is vertical
+            print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT THAT EXTENDS OUT OF THE BOARD [BUG]  \n\n")
+            print(row, col, size, orientation, hints)
+            return True
+
+        # Verifica se o novo barco (horizontal) não se extende para fora do tabuleiro
+        elif not orientation and (col < 0 or size + col > 10):  # is horizontal
+            print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT THAT EXTENDS OUT OF THE BOARD [BUG]  \n\n")
+            print(row, col, size, orientation, hints)
+            return True
+
+        # Verifica se o tamanho do barco respeita as regras (max size = 4)
+        elif size > 4:
+            print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE MORE THAN 4 [BUG]  \n\n")
+            print("size =", size)
+            print(row, col, size, orientation, hints)
+            return True
+
+        # Verifica se já foram colocados todos os barcos do tamanho dado como ‘input’
+        elif self.boats[size - 1] <= 0:
+            print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT OF SIZE ALREADY CLOSED [BUG]  \n\n")
+            print("number of boats of the size =", self.boats[size - 1])
+            print("size =", size)
+            print(row, col, size, orientation, hints)
+            return True
+
+        return False
 
     def place_boat_single(self, row, col):
 
-        if self.place_boat_line(row - 1, col, 'w', 0):
+        if self.place_boat_line(row - 1, col, 'w', 0): # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
             return 1
-        if self.place_boat_line(row, col, 'c', 0):
+        if self.place_boat_line(row, col, 'c', 0): # [ '.' '.' '.'] -> [ 'w' 'c' 'w' ]
             return 1
-        if self.place_boat_line(row + 1, col, 'w', 0):
+        if self.place_boat_line(row + 1, col, 'w', 0): # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
             return 1
 
     def place_boat_long_vertical(self, row, col, size):
 
-        if self.place_boat_line(row - 1, col, 'w', 0):
+        if self.place_boat_line(row - 1, col, 'w', 0): # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
             return 1
-        if self.place_boat_line(row, col, 't', 0):
+        if self.place_boat_line(row, col, 't', 0): # [ '.' '.' '.'] -> [ 'w' 't' 'w' ]
             return 1
-        if self.place_boat_line(row + (size - 1), col, 'b', 0):
+        if self.place_boat_line(row + (size - 1), col, 'b', 0): # [ '.' '.' '.'] -> [ 'w' 'b' 'w' ]
             return 1
-        if self.place_boat_line(row + size, col, 'w', 0):
+        if self.place_boat_line(row + size, col, 'w', 0): # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
             return 1
 
         for i in range(size - 2):
-            if self.place_boat_line(row + 1 + i, col, 'm', 0):
+            if self.place_boat_line(row + 1 + i, col, 'm', 0): # [ '.' '.' '.'] -> [ 'w' 'm' 'w' ]
                 return 1
 
     def place_boat_long_horizontal(self, row, col, size):
 
-        if self.place_boat_line(row, col - 1, 'w', 1):
+        if self.place_boat_line(row, col - 1, 'w', 1): # [ '.' '.' '.']^T -> [ 'w' 'w' 'w' ]^T
             return 1
-        if self.place_boat_line(row, col, 'l', 1):
+        if self.place_boat_line(row, col, 'l', 1): # [ '.' '.' '.']^T -> [ 'w' 'l' 'w' ]^T
             return 1
-        if self.place_boat_line(row, col + (size - 1), 'r', 1):
+        if self.place_boat_line(row, col + (size - 1), 'r', 1): # [ '.' '.' '.']^T -> [ 'w' 'r' 'w' ]^T
             return 1
-        if self.place_boat_line(row, col + size, 'w', 1):
+        if self.place_boat_line(row, col + size, 'w', 1): # [ '.' '.' '.']^T -> [ 'w' 'w' 'w' ]^T
             return 1
 
         for i in range(size - 2):
-            if self.place_boat_line(row, col + 1 + i, 'm', 1):
+            if self.place_boat_line(row, col + 1 + i, 'm', 1): # [ '.' '.' '.']^T -> [ 'w' 'm' 'w' ]^T
                 return 1
 
     def place_boat_line(self, row, col, piece, direction):
 
         water_pieces = [-1, 1]
 
-        if self.is_water_piece(piece):
+        if self.is_boat_piece(piece):
+            if self.is_empty(get_value(row, col)):
+                self.add_piece(row, col, piece)
+            elif self.is_boat_piece(get_value(row, col)):
+                if piece.upper() ==  self.get_value(row, col):
+                    pass
+                elif self.is_unknown_piece(get_value(row,col)):
+                    self.change_tile(row, col, piece)
+                else:
+                    print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT PIECE ON TOP OF ANOTHER BOAT (Excluding Right Hints and Unknowns) [BUG?]  \n\n")
+                    return 1
+            elif self.is_water_piece(get_value(row, col)):
+                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT PIECE ON TOP OF WATER [BUG?]  \n\n")
+                return 1
+        elif self.is_water_piece(piece):
             water_pieces.append(0)
 
-        elif self.get_value(row, col) not in ('.', None):
-            if self.get_value(row, col).lower() != piece and self.is_unknown_piece(self.get_value(row, col)):
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A BOATS ON ALREADY FILLED TILES (Excluding Hints of the Boat in Question) [BUG?]  \n\n")
-                return 1
-
-        else:
-            self.add_piece(row, col, piece)
-
+        new_row = row
+        new_col = col
         for i in water_pieces:
-            if direction:  # Columns (of size 3)
+            if direction:               # Itera sobre a mesma coluna
                 new_row = row + i
-                new_col = col
-            else:  # Rows (of size 3)
-                new_row = row
+            else:                       # Itera sobre a mesma linha
                 new_col = col + i
 
-            if not self.is_inside_board(new_row, new_col) or \
-                    self.is_water_piece(self.get_value(new_row, new_col)):
+            if self.is_empty(get_value(row, col)):
+                self.add_piece(new_row, new_col, 'w')
+            elif not self.is_inside_board(new_row, new_col) or self.is_water_piece(self.get_value(new_row, new_col)):
                 continue
-
-            if self.is_boat_piece(self.get_value(new_row, new_col)):
-                print("\n\n ILLEGAL RESULT NODE -> CREATING A WATER ON ALREADY FILLED TILES (Excluding water e outofbounds) [BUG??]  \n\n")
+            elif self.is_boat_piece(self.get_value(new_row, new_col)):
+                print("\n\n ILLEGAL RESULT NODE -> CREATING A WATER ON TOP OF BOATS ALREADY FILLED TILES [BUG??]  \n\n")
                 return 1
 
-            self.add_piece(new_row, new_col, 'w')
+        return 0
 
-    # TODO ############################################## GOAL ##############################################
-
-    def all_boats_placed(self):
-        """ Retorna False se ainda houver boats de tamanho size
-         por colocar. Retorna true se todos os boats de todos os
-         tamanhos ja tenham sido colocados. """
-        for size in range(1, 5):
-            if self.get_boats_left(size) != 0:
-                return False
-        return True
-
-    def all_lines_completed(self):
-        """Verifica se todas as rows e columns têm o devido número
-        de boat pieces e se todos os tiles estão preenchidos"""
-        for i in range(10):
-            if (self.get_bpieces_left_row(i) != 0) and (self.get_bpieces_left_col(i) != 0) and \
-                (self.get_empty_spaces_row(i) != 0) and (self.get_empty_spaces_col(i) != 0):
-                return False
-        return True
 
 
     # TODO ############################################## TO BE DELETED ##############################################
+
+    def print(self):
+        for row in self.matrix:
+            print(row)
 
     def print_matrix_nf(self):
         for row in self.matrix:
@@ -792,9 +897,6 @@ class Board:
             print()
 
     # TODO ############################################## END ##############################################
-    # TODO ############################################## END ##############################################
-    # TODO ############################################## END ##############################################
-
 
 class Bimaru(Problem):
     def __init__(self, board: Board):
@@ -835,20 +937,36 @@ class Bimaru(Problem):
         self.actions(state)."""
 
         new_board = copy.deepcopy(state.get_board())
+        row, col, size, orientation ,hints = action
 
-        if new_board.place_boats(action) is None:
+        if new_board.place_boat(action):
             return None
-        else:
-            return BimaruState(new_board)
+
+        self.logic_away()  # TODO VER ISTOOOOOOOOOOOOOOO 1337
+
+        return BimaruState(new_board)
 
     def goal_test(self, state: BimaruState):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
-        estão preenchidas de acordo com as regras do problema."""
-        if (state is not None) and (state.get_board().all_boats_placed()) and (state.get_board().all_lines_completed()):
-            return True
-        else:
+        estão preenchidas conforme as regras do problema."""
+
+        # Verifica se é um estado válido
+        if state is None:
             return False
+
+        # Verifica se todos os barcos foram colocados
+        for size in range(1, 5):
+            if self.get_boats_left(size) != 0:
+                return False
+
+        # Verifica se todas as colunas e linhas estão cheias e com o número de peças de barco correto
+        for coordenada in range(10):
+            if (self.get_bpieces_left_row(coordenada) != 0) and (self.get_bpieces_left_col(coordenada) != 0) and \
+                (self.get_empty_spaces_row(coordenada) != 0) and (self.get_empty_spaces_col(coordenada) != 0):
+                return False
+
+        return True
 
     def h(self, node: Node):
         """Função heuristica utilizada para a procura A*."""
