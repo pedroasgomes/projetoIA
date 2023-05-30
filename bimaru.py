@@ -138,7 +138,8 @@ class Board:
     def add_hint(self, row: int, col: int, piece: str):
 
         if self.is_water_piece(piece):
-            self.add_piece(row, col, piece)
+            if self.is_empty(self.get_value(row, col)):
+                self.add_piece(row, col, piece)
         elif self.is_center_piece(piece):
             self.place_boat(row, col, 1, 0, 0)
         else:
@@ -319,21 +320,22 @@ class Board:
         for row in list(self.get_unclosed_rows()):
             if self.get_bpieces_left_row(row) == '0':
                 self.add_closed_row(row)
-                for i in range(10):
-                    if self.is_empty(self.get_value(row, i)):
-                        self.add_piece(row, i, 'w')
+                for col in range(10):
+                    if self.is_empty(self.get_value(row, col)):
+                        self.add_piece(row, col, 'w')
 
         for col in list(self.get_unclosed_columns()):
             if self.get_bpieces_left_col(col) == '0':
                 self.add_closed_column(col)
-                for i in range(10):
-                    if self.is_empty(self.get_value(i, col)):
-                        self.add_piece(i, col, 'w')
+                for row in range(10):
+                    if self.is_empty(self.get_value(row, col)):
+                        self.add_piece(row, col, 'w')
 
     def marshal_lines(self):
 
         boats = []
         boats_copy = self.boats.copy()
+        new_hints = []
 
         for row in self.get_unclosed_rows():
             if self.get_bpieces_left_row(row) == self.get_empty_spaces_row(row):  # Assume-se que nunca vai ser <= 0
@@ -341,8 +343,8 @@ class Board:
                 while col < 10:
                     size = 0
                     hints = 0
-                    while (col + size < 10) and (self.is_empty(self.get_value(row, col + size)) or\
-                            self.is_middle_piece(self.get_value(row, col + size)) or\
+                    while (col + size < 10) and (self.is_empty(self.get_value(row, col + size)) or \
+                            (self.is_middle_piece(self.get_value(row, col + size)) and (self.is_hint_piece(self.get_value(row, col + size)))) or\
                             self.is_unknown_piece(self.get_value(row, col + size))):
                         if self.is_middle_piece(self.get_value(row, col + size)) or self.is_unknown_piece(self.get_value(row, col + size)):
                             hints += 1
@@ -359,20 +361,29 @@ class Board:
                                     return 1
                                 boats.append((row, col, size, 0, hints))
                             else:
-                                self.add_hint(row, col, 'U')
+                                new_hints.append((row, col, 'U'))
+                        if self.is_unknown_piece(self.get_value(row, col)):
+                            if self.is_u_single(row, col):
+                                boats_copy[size - 1] -= 1
+                                if boats_copy[size - 1] < 0:
+                                    return 1
+                                boats.append((row, col, size, 0, hints))
 
                         col += size
 
                     elif 1 < size < 5:  # Assume [2,3,4]
-                        boats_copy[size - 1] -= 1
-                        if boats_copy[size - 1] < 0:
-                            return 1
-                        boats.append((row, col, size, 0, hints))
+                        # TODO CASO EM QUE SIZE == 2 E EH tMMp por exemplo
+                        if size == 2 and self.is_middle_piece(self.get_value(row, col)) and self.is_middle_piece(self.get_value(row, col + 1)):
+                            continue
+                        else:
+                            boats_copy[size - 1] -= 1
+                            if boats_copy[size - 1] < 0:
+                                return 1
+                            boats.append((row, col, size, 0, hints))
                         col += size
 
                     elif size > 4:
                         return 1
-
 
         for col in self.get_unclosed_columns():
             if self.get_bpieces_left_col(col) == self.get_empty_spaces_col(col):  # Assume-se que nunca vai ser <= 0
@@ -381,7 +392,7 @@ class Board:
                     size = 0
                     hints = 0
                     while (row + size < 10) and (self.is_empty(self.get_value(row + size, col)) or\
-                            self.is_middle_piece(self.get_value(row + size, col)) or\
+                            (self.is_middle_piece(self.get_value(row + size, col)) and self.is_hint_piece(self.get_value(row + size, col))) or\
                             self.is_unknown_piece(self.get_value(row + size, col))):
                         if self.is_middle_piece(self.get_value(row + size, col)) or self.is_unknown_piece(self.get_value(row + size, col)):
                             hints += 1
@@ -391,29 +402,44 @@ class Board:
 
                     elif size == 1:
                         if self.is_empty(self.get_value(row, col)):
-                            if self.is_u_single(row, col):
+                            if any(element[0] == row and element[1] == col for element in boats):
+                                pass
+                            elif self.is_u_single(row, col):
                                 boats_copy[size - 1] -= 1
                                 if boats_copy[size - 1] < 0:
                                     return 1
                                 boats.append((row, col, size, 0, hints))
                             else:
-                                self.add_hint(row, col, 'U')
+                                new_hints.append((row, col, 'U'))
+                        if self.is_unknown_piece(self.get_value(row, col)):
+                            if self.is_u_single(row, col):
+                                boats_copy[size - 1] -= 1
+                                if boats_copy[size - 1] < 0:
+                                    return 1
+                                boats.append((row, col, size, 0, hints))
                         row += size
 
                     elif 1 < size < 5:  # Assume [2,3,4]
-                        boats_copy[size - 1] -= 1
-                        if boats_copy[size - 1] < 0:
-                            return 1
-                        boats.append((row, col, size, 1, hints))
-                        row += size
+                        # TODO CASO EM QUE SIZE == 2 E EH tMMp por exemplo
+                        if size == 2 and self.is_middle_piece(self.get_value(row, col)) and self.is_middle_piece(self.get_value(row + 1, col)):
+                            continue
+                        else:
+                            boats_copy[size - 1] -= 1
+                            if boats_copy[size - 1] < 0:
+                                return 1
+                            boats.append((row, col, size, 1, hints))
+                            row += size
 
                     elif size > 4:
                         return 1
 
-
-
         if len(boats) == 0:
-            return 2
+            if len(new_hints) == 0:
+                return 2
+            else:
+                for new_hint in new_hints:
+                    row, col, piece = new_hint
+                    self.add_hint(row, col, piece)
 
         for boat in boats:
             row, col, size, orientation, hints = boat
@@ -579,10 +605,10 @@ class Board:
             else:  # Itera sobre a mesma linha
                 new_col = col + i
 
+            if not self.is_inside_board(new_row, new_col) or self.is_water_piece(self.get_value(new_row, new_col)):
+                continue
             if self.is_empty(self.get_value(new_row, new_col)):
                 self.add_piece(new_row, new_col, 'w')
-            elif not self.is_inside_board(new_row, new_col) or self.is_water_piece(self.get_value(new_row, new_col)):
-                continue
             elif self.is_boat_piece(self.get_value(new_row, new_col)):
                 print("\n\n ILLEGAL RESULT NODE -> CREATING A WATER ON TOP OF BOATS ALREADY FILLED TILES [BUG??]  \n\n")
                 return 1
@@ -710,7 +736,6 @@ class Board:
             elif self.is_unknown_piece(piece):
                 if self.is_u_single(row, col):
                     actions.append((row, col, 1, 0, hints))
-
                     return actions
 
             elif self.is_middle_piece(piece):
@@ -848,7 +873,6 @@ class Board:
 
     # TODO ############################################## END ##############################################
 
-
 class Bimaru(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
@@ -930,14 +954,14 @@ if __name__ == "__main__":
     # Imprimir para o standard output no formato indicado.
 
     board = Board.parse_instance()
+    problem = Bimaru(board)
+    initial_state = BimaruState(board)
+    goal_node = breadth_first_tree_search(problem)
 
-    board.print_matrix_nf()
-    print(board.unexplored_hints)
-    board.print_rows_cols_limit()
-    board.print_rows_cols_available()
-    print('\n')
+    from gui import Application
 
-
-
+    print("Is goal?", problem.goal_test(goal_node.state))
+    print("Solution:\n", goal_node.state.board, sep="")
+    goal_node.state.board.print_board()
 
     pass
