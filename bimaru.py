@@ -36,6 +36,7 @@ class BimaruState:
         return self.board
     # TODO ############################################## ILEGAL ##############################################
 
+
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
 
@@ -302,25 +303,32 @@ class Board:
         boats_copy = self.boats.copy()
 
         for row in self.get_unclosed_rows():
-            if self.get_bpieces_left_row(row) == self.get_empty_spaces_row(row): # Assume-se que nunca vai ser <= 0
+            if self.get_bpieces_left_row(row) == self.get_empty_spaces_row(row):  # Assume-se que nunca vai ser <= 0
                 col = 0
                 while col < 10:
                     size = 0
-                    while (col + size < 10) and\
-                            (self.is_empty(self.get_value(row, col)) or self.is_boat_piece(self.get_value(row, col))):
-                        size += 1
+                    while col + size < 10:
+                        if self.is_empty(self.get_value(row, col + size)) or\
+                                self.is_middle_piece(self.get_value(row, col + size)) or\
+                                self.is_unknown_piece(self.get_value(row, col + size)):
+                            size += 1
 
-                    if size == 1:
-                        if self.is_u_single(row, col):
-                            boats_copy[size - 1] -= 1
-                            if boats_copy[size - 1] < 0:
-                                return 1
-                            boats.append((row, col, size, 0, 0))
-                        else:
-                            self.add_hint(row, col, 'U')
+                    if size == 0:
+                        col += 1
+
+                    elif size == 1:
+                        if self.is_empty(self.get_value(row, col)):
+                            if self.is_u_single(row, col):
+                                boats_copy[size - 1] -= 1
+                                if boats_copy[size - 1] < 0:
+                                    return 1
+                                boats.append((row, col, size, 0, 0))
+                            else:
+                                self.add_hint(row, col, 'U')
+
                         col += size
 
-                    elif size < 5:  # Assume [2,3,4]
+                    elif 1 < size < 5:  # Assume [2,3,4]
                         boats_copy[size - 1] -= 1
                         if boats_copy[size - 1] < 0:
                             return 1
@@ -330,40 +338,43 @@ class Board:
                     elif size > 4:
                         return 1
 
-                    else:
-                        col += 1
 
         for col in self.get_unclosed_columns():
-            if self.get_bpieces_left_col(col) == self.get_empty_spaces_col(col): # Assume-se que nunca vai ser <= 0
+            if self.get_bpieces_left_col(col) == self.get_empty_spaces_col(col):  # Assume-se que nunca vai ser <= 0
                 row = 0
+                print(self.get_unclosed_columns())
                 while row < 10:
                     size = 0
-                    while (row + size < 10) and\
-                            (self.is_empty(self.get_value(row, col)) or self.is_boat_piece(self.get_value(row, col))):
-                        size += 1
+                    while row + size < 10:
+                        if self.is_empty(self.get_value(row, col + size)) or\
+                                self.is_middle_piece(self.get_value(row, col + size)) or\
+                                self.is_unknown_piece(self.get_value(row, col + size)):
+                            size += 1
+                    if size == 0:
+                        row += 1
 
-                    if size == 1:
-                        if self.is_u_single(row, col):
-                            boats_copy[size - 1] -= 1
-                            if boats_copy[size - 1] < 0:
-                                return 1
-                            boats.append((row, col, size, 0, 0))
-                        else:
-                            self.add_hint(row, col, 'U')
-                        col += size
+                    elif size == 1:
+                        if self.is_empty(self.get_value(row, col)):
+                            if self.is_u_single(row, col):
+                                boats_copy[size - 1] -= 1
+                                if boats_copy[size - 1] < 0:
+                                    return 1
+                                boats.append((row, col, size, 0, 0))
+                            else:
+                                self.add_hint(row, col, 'U')
+                        row += size
 
-                    elif size < 5:  # Assume [2,3,4]
+                    elif 1 < size < 5:  # Assume [2,3,4]
                         boats_copy[size - 1] -= 1
                         if boats_copy[size - 1] < 0:
                             return 1
                         boats.append((row, col, size, 1, 0))
-                        col += size
+                        row += size
 
                     elif size > 4:
                         return 1
 
-                    else:
-                        col += 1
+
 
         if len(boats) == 0:
             return 2
@@ -429,7 +440,7 @@ class Board:
         self.print_boats()
         self.print_hints()
 
-        return self
+        return 0
 
     def boat_not_valid(self, row: int, col: int, size: int, orientation: int, hints: int):
         """ Verifica se o barco dado como 'input' não viola regras triviais de barcos """
@@ -529,7 +540,8 @@ class Board:
                 elif self.is_unknown_piece(self.get_value(row, col)):
                     self.change_tile(row, col, piece)
                 else:
-                    print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT PIECE ON TOP OF ANOTHER BOAT (Excluding Right Hints and Unknowns) [BUG?]  \n\n")
+                    print(
+                        "\n\n ILLEGAL RESULT NODE -> CREATING A BOAT PIECE ON TOP OF ANOTHER BOAT (Excluding Right Hints and Unknowns) [BUG?]  \n\n")
                     return 1
             elif self.is_water_piece(self.get_value(row, col)):
                 print("\n\n ILLEGAL RESULT NODE -> CREATING A BOAT PIECE ON TOP OF WATER [BUG?]  \n\n")
@@ -562,115 +574,142 @@ class Board:
         hints = 1
         actions = []
 
-        row, col, piece = self.get_first_hint()
-        self.remove_hint(row, col, piece)
+        for hint in self.get_all_hints():
+            row, col, piece = hint
 
-        if self.is_center_piece(piece):
-            actions.append((row, col, 1, 0, hints))
-            return actions
-
-        elif self.is_top_piece(piece):
-            for size in self.get_available_sizes():
-
-                next_piece = self.get_value(row + size - 1, col)
-
-                if next_piece in ('w', 'W', None, 'R', 'L', 'T', 'C'):
-                    break
-
-                elif self.is_empty(next_piece):
-                    actions.append((row, col, size, 1, hints))
-                    continue
-
-                elif next_piece == 'B':
-                    hints += 1
-                    self.remove_hint(row + size - 1, col, next_piece)
-                    actions.append((row, col, size, 1, hints))
-                    return actions
-
-                elif next_piece in ('M', 'U'):
-                    hints += 1
-                    self.remove_hint(row + size - 1, col, next_piece)
-                    continue
-
-        elif self.is_bot_piece(piece):
-            for size in self.get_available_sizes():  # This e excludes size 1
-
-                next_piece = self.get_value(row - size + 1, col)
-
-                if next_piece in ('w', 'W', None, 'R', 'L', 'B', 'C'):
-                    break
-
-                elif self.is_empty(next_piece):
-                    actions.append((row - size + 1, col, size, 1, hints))
-                    continue
-
-                elif next_piece == 'T':
-                    hints += 1
-                    self.remove_hint(row - size + 1, col, next_piece)
-                    actions.append((row - size + 1, col, size, 1, hints))
-                    return actions
-
-                elif next_piece in ('M', 'U'):
-                    hints += 1
-                    self.remove_hint(row - size + 1, col, next_piece)
-                    continue
-
-        elif self.is_left_piece(piece):
-            for size in self.get_available_sizes():  # This e excludes size 1
-
-                next_piece = self.get_value(row, col + size - 1)
-
-                if next_piece in ('w', 'W', None, 'L', 'T', 'B', 'C'):
-                    break
-
-                elif self.is_empty(next_piece):
-                    actions.append((row, col, size, 0, hints))
-                    continue
-
-                elif next_piece == 'R':
-                    hints += 1
-                    self.remove_hint(row, col + size - 1, next_piece)
-                    actions.append((row, col, size, 0, hints))
-                    return actions
-
-                elif next_piece in ('M', 'U'):
-                    hints += 1
-                    self.remove_hint(row, col + size - 1, next_piece)
-                    continue
-
-        elif self.is_right_piece(piece):
-            for size in self.get_available_sizes():  # This e excludes size 1
-
-                next_piece = self.get_value(row, col - size + 1)
-
-                if next_piece in ('w', 'W', None, 'R', 'T', 'B', 'C'):
-                    break
-
-                elif self.is_empty(next_piece):
-                    actions.append((row, col - size + 1, size, 0, hints))
-                    continue
-
-                elif next_piece == 'L':
-                    hints += 1
-                    self.remove_hint(row, col - size + 1, next_piece)
-                    actions.append((row, col - size + 1, size, 0, hints))
-                    return actions
-
-                elif next_piece in ('M', 'U'):
-                    hints += 1
-                    self.remove_hint(row, col - size + 1, next_piece)
-                    continue
-
-        elif self.is_unknown_piece(piece):
-            if self.is_u_single(row, col):
+            if self.is_center_piece(piece):
+                self.remove_hint(row, col, piece)
                 actions.append((row, col, 1, 0, hints))
                 return actions
-            return 0
 
-        elif self.is_middle_piece(piece):
-            return 0
+            elif self.is_top_piece(piece):
+                for size in self.get_available_sizes():
 
-        return actions
+                    if size == 1:
+                        continue
+
+                    next_piece = self.get_value(row + size - 1, col)
+
+                    if next_piece in ('w', 'W', None, 'R', 'L', 'T', 'C'):
+                        break
+
+                    elif self.is_empty(next_piece):
+                        actions.append((row, col, size, 1, hints))
+                        continue
+
+                    elif next_piece == 'B':
+                        hints += 1
+                        self.remove_hint(row + size - 1, col, next_piece)
+                        self.remove_hint(row, col, piece)
+                        actions.append((row, col, size, 1, hints))
+                        return actions
+
+                    elif next_piece in ('M', 'U'):
+                        hints += 1
+                        self.remove_hint(row + size - 1, col, next_piece)
+                        continue
+
+                self.remove_hint(row, col, piece)
+                return actions
+
+            elif self.is_bot_piece(piece):
+                for size in self.get_available_sizes():  # This e excludes size 1
+
+                    if size == 1:
+                        continue
+
+                    next_piece = self.get_value(row - size + 1, col)
+
+                    if next_piece in ('w', 'W', None, 'R', 'L', 'B', 'C'):
+                        break
+
+                    elif self.is_empty(next_piece):
+                        actions.append((row - size + 1, col, size, 1, hints))
+                        continue
+
+                    elif next_piece == 'T':
+                        hints += 1
+                        self.remove_hint(row - size + 1, col, next_piece)
+                        self.remove_hint(row, col, piece)
+                        actions.append((row - size + 1, col, size, 1, hints))
+                        return actions
+
+                    elif next_piece in ('M', 'U'):
+                        hints += 1
+                        self.remove_hint(row - size + 1, col, next_piece)
+                        continue
+
+                self.remove_hint(row, col, piece)
+                return actions
+
+            elif self.is_left_piece(piece):
+                for size in self.get_available_sizes():  # This e excludes size 1
+
+                    if size == 1:
+                        continue
+
+                    next_piece = self.get_value(row, col + size - 1)
+
+                    if next_piece in ('w', 'W', None, 'L', 'T', 'B', 'C'):
+                        break
+
+                    elif self.is_empty(next_piece):
+                        actions.append((row, col, size, 0, hints))
+                        continue
+
+                    elif next_piece == 'R':
+                        hints += 1
+                        self.remove_hint(row, col + size - 1, next_piece)
+                        actions.append((row, col, size, 0, hints))
+                        self.remove_hint(row, col, piece)
+                        return actions
+
+                    elif next_piece in ('M', 'U'):
+                        hints += 1
+                        self.remove_hint(row, col + size - 1, next_piece)
+                        continue
+
+                self.remove_hint(row, col, piece)
+                return actions
+
+            elif self.is_right_piece(piece):
+                for size in self.get_available_sizes():  # This e excludes size 1
+
+                    if size == 1:
+                        continue
+
+                    next_piece = self.get_value(row, col - size + 1)
+
+                    if next_piece in ('w', 'W', None, 'R', 'T', 'B', 'C'):
+                        break
+
+                    elif self.is_empty(next_piece):
+                        actions.append((row, col - size + 1, size, 0, hints))
+                        continue
+
+                    elif next_piece == 'L':
+                        hints += 1
+                        self.remove_hint(row, col - size + 1, next_piece)
+                        actions.append((row, col - size + 1, size, 0, hints))
+                        self.remove_hint(row, col, piece)
+                        return actions
+
+                    elif next_piece in ('M', 'U'):
+                        hints += 1
+                        self.remove_hint(row, col - size + 1, next_piece)
+                        continue
+
+                self.remove_hint(row, col, piece)
+                return actions
+
+            elif self.is_unknown_piece(piece):
+                if self.is_u_single(row, col):
+                    actions.append((row, col, 1, 0, hints))
+                    self.remove_hint(row, col, piece)
+                    return actions
+
+            elif self.is_middle_piece(piece):
+                pass
 
     def get_guess_boats_row(self, row: int, size: int):
 
@@ -682,10 +721,10 @@ class Board:
             max_size = 0
             if self.is_empty(self.get_value(row, col)) or self.is_unknown_piece(self.get_value(row, col)):
                 max_size = 1
-                while self.is_empty(self.get_value(row, col + max_size)) or\
-                        self.is_unknown_piece(self.get_value(row, col + max_size)) or\
+                while self.is_empty(self.get_value(row, col + max_size)) or \
+                        self.is_unknown_piece(self.get_value(row, col + max_size)) or \
                         self.is_middle_piece(self.get_value(row, col + max_size)):
-                    if self.is_unknown_piece(self.get_value(row, col + max_size)) or\
+                    if self.is_unknown_piece(self.get_value(row, col + max_size)) or \
                             self.is_middle_piece(self.get_value(row, col + max_size)):
                         hints += 1
 
@@ -801,6 +840,7 @@ class Board:
 
     # TODO ############################################## END ##############################################
 
+
 class Bimaru(Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
@@ -820,10 +860,8 @@ class Bimaru(Problem):
 
         if not state.get_board().is_hints_empty():
             actions = state.get_board().get_hint_based_actions()  # Retorna uma unica action com 1 move
-            if type(actions) == list and len(actions) > 0:
+            if len(actions) > 0:
                 return actions
-            if type(actions) == int:
-                return []
 
         actions = state.get_board().get_guess_based_actions()  # Retorna varias actions com 1 move
         return actions
@@ -837,7 +875,7 @@ class Bimaru(Problem):
         new_board = copy.deepcopy(state.get_board())
         row, col, size, orientation, hints = action
 
-        if new_board.place_boat(action) or new_board.logic_away():
+        if new_board.place_boat(row, col, size, orientation, hints) or new_board.logic_away():
             return None
 
         return BimaruState(new_board)
@@ -858,9 +896,9 @@ class Bimaru(Problem):
 
         # Verifica se todas as colunas e linhas estão cheias e com o número de peças de barco correto
         for coordenada in range(10):
-            if (state.get_board().get_bpieces_left_row(coordenada) != 0) and\
-                (state.get_board().get_bpieces_left_col(coordenada) != 0) and\
-                (state.get_board().get_empty_spaces_row(coordenada) != 0) and\
+            if (state.get_board().get_bpieces_left_row(coordenada) != 0) and \
+                    (state.get_board().get_bpieces_left_col(coordenada) != 0) and \
+                    (state.get_board().get_empty_spaces_row(coordenada) != 0) and \
                     (state.get_board().get_empty_spaces_col(coordenada) != 0):
                 return False
 
@@ -873,6 +911,7 @@ class Bimaru(Problem):
 
     # TODO: outros metodos da classe
 
+
 if __name__ == "__main__":
     # TODO:
     # Ler o ficheiro do standard input,
@@ -880,20 +919,15 @@ if __name__ == "__main__":
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
 
-    myBoard = Board.parse_instance()
+    board = Board.parse_instance()
+    problem = Bimaru(board)
+    initial_state = BimaruState(board)
+    goal_node = depth_first_tree_search(problem)
 
-    myBoard.print_matrix_nf()
+    from gui import Application
 
-    print('\n')
-
-    move1 = (3, 2, 1, 0, 1)
-    move2 = (9, 5, 1, 0, 1)
-
-    action = myBoard.get_hint_based_actions()
-    row, col, size, orientation, hints = action
-
-    newBoard = myBoard.place_boat(row, col, size, orientation, hints)
-
-    newBoard.print_matrix_nf()
+    print("Is goal?", problem.goal_test(goal_node.state))
+    print("Solution:\n", goal_node.state.board, sep="")
+    goal_node.state.board.print_board()
 
     pass
