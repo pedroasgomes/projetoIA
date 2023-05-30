@@ -440,15 +440,6 @@ class Board:
         """ Signigicado das hints é: peças que pertencem ao barco e ja se encontram no tabuleiro e ja têm os
         valores em consideracao no cálculo da informacao das linhas e colunas"""
 
-        # TODO DELETE THIS
-        print("----------------------BEFORE----------------------")
-        print([row, col, size, orientation, hints])
-        self.print_matrix_nf()
-        self.print_rows_cols_limit()
-        self.print_boats()
-        self.print_hints()
-
-
         # Verifica se o barco dado é valido
         if self.boat_not_valid(row, col, size, orientation, hints):
             return 1
@@ -468,14 +459,6 @@ class Board:
         else:
             if self.place_boat_long_horizontal(row, col, size):
                 return 1
-
-        # TODO DELETE THIS
-        print("----------------------AFTER----------------------")
-        print([row, col, size, orientation, hints])
-        self.print_matrix_nf()
-        self.print_rows_cols_limit()
-        self.print_boats()
-        self.print_hints()
 
         return 0
 
@@ -947,15 +930,12 @@ if __name__ == "__main__":
     # Imprimir para o standard output no formato indicado.
 
     board = Board.parse_instance()
-    problem = Bimaru(board)
-    initial_state = BimaruState(board)
-    goal_node = breadth_first_tree_search(problem)
 
-    from gui import Application
-
-    print("Is goal?", problem.goal_test(goal_node.state))
-    print("Solution:\n", goal_node.state.board, sep="")
-    goal_node.state.board.print_board()
+    board.print_matrix_nf()
+    print(board.unexplored_hints)
+    board.print_rows_cols_limit()
+    board.print_rows_cols_available()
+    print('\n')
 
 
 
