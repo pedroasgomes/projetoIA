@@ -30,9 +30,8 @@ class BimaruState:
 	def __lt__(self, other):
 		return self.id < other.id
 	
-
-
-	
+	def unplaced_boats(self):
+		return self.board.boats
 
 	# TODO: outros metodos da classe
 
@@ -199,9 +198,6 @@ class Board:
 			self.boats['positions'].extend(coords)
 			return True
 
-
-				
-
 	def update_boats(self):
 		for row in range(10):
 			for col in range(10):
@@ -334,16 +330,8 @@ class Board:
 			board.add_piece(row,col,val)
 
 		board.load_board()
-
-
-		
-		# faz o pre-processamento inicial
-
-		#board.preload_board()
 		board.print_board()
 		return board
-
-	# TODO: outros metodos da classe
 
 
 class Bimaru(Problem):
@@ -354,26 +342,35 @@ class Bimaru(Problem):
 	def actions(self, state: BimaruState):
 		"""Retorna uma lista de ações que podem ser executadas a
 		partir do estado passado como argumento."""
-		# Ações que podem ser tomada:
-		# - verifica se pode pôr barcos
-		# - 
-		# TODO
-		pass
+		unplaced_boats = state.unplaced_boats()
+		actions = []
+		if unplaced_boats[3] != 0:
+			actions.append("place_boat_4")
+		if unplaced_boats[2] != 0:
+			actions.append("place_boat_3")
+		if unplaced_boats[1] != 0:
+			actions.append("place_boat_2")
+		if unplaced_boats[0] != 0:
+			actions.append("place_boat_1")
+
+		return actions
 
 	def result(self, state: BimaruState, action):
 		"""Retorna o estado resultante de executar a 'action' sobre
 		'state' passado como argumento. A ação a executar deve ser uma
 		das presentes na lista obtida pela execução de
 		self.actions(state)."""
-		# TODO
 		pass
 
 	def goal_test(self, state: BimaruState):
 		"""Retorna True se e só se o estado passado como argumento é
 		um estado objetivo. Deve verificar se todas as posições do tabuleiro
 		estão preenchidas de acordo com as regras do problema."""
-		# TODO
-		pass
+		boats = state.unplaced_boats()
+		for boat in unplaced_boats:
+			if boat != 0:
+				return False
+		return True
 
 	def h(self, node: Node):
 		"""Função heuristica utilizada para a procura A*."""
