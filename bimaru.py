@@ -41,7 +41,7 @@ class Board:
 	"""Representação interna de um tabuleiro de Bimaru."""
 	def __init__(self):
 		self.matrix = [['.' for _ in range(10)] for _ in range(10)]
-		self.boats = []
+		self.boats = {'remaining': [4,3,2,1], 'positions': []}
 		self.rows = [] # barcos em falta na linha
 		self.columns = [] # barcos em falta na coluna
 		self.rows_pieces = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] # peças em falta na linha
@@ -133,7 +133,80 @@ class Board:
 			self.columns[col] -= 1
 			self.columns_pieces[col] -= 1
 
-	
+	def isBoat(self, row: int, col: int):
+		value = self.matrix[row][col]
+		coords = [(row,col)]
+		if value == 'T':
+			i = row+1
+			while self.isValid(i, col):
+				if self.get_value(i, col) == None or self.get_value(i, col) == 'U' or self.get_value(i, col) == 'W':
+					return False
+				elif self.get_value(i, col) == 'M':
+					coords.append((i,col))
+					i += 1
+				elif self.get_value(i, col) == 'B':
+					coords.append((i,col))
+					size = len(coords)-1
+					self.boats['remaining'][size] -= 1
+					self.boats['positions'].extend(coords)
+					return True
+				else:
+					return False
+		elif value == 'B':
+			i = row-1
+			while self.isValid(i, col):
+				if self.get_value(i, col) == None or self.get_value(i, col) == 'U' or self.get_value(i, col) == 'W':
+					return False
+				elif self.get_value(i, col) == 'M':
+					coords.append((i,col))
+					i -= 1
+				elif self.get_value(i, col) == 'T':
+					coords.append((i,col))
+					size = len(coords)-1
+					self.boats['remaining'][size] -= 1
+					self.boats['positions'].extend(coords)
+					return True
+		elif value == 'L':
+			i = col+1
+			while self.isValid(row, i):
+				if self.get_value(row, i) == None or self.get_value(row, i) == 'U' or self.get_value(row, i) == 'W':
+					return False
+				elif self.get_value(row, i) == 'M':
+					coords.append((row,i))
+					i += 1
+				elif self.get_value(row, i) == 'R':
+					coords.append((row,i))
+					size = len(coords)-1
+					self.boats['remaining'][size] -= 1
+					self.boats['positions'].extend(coords)
+					return True
+		elif value == 'R':
+			i = col-1
+			while self.isValid(row, i):
+				if self.get_value(row, i) == None or self.get_value(row, i) == 'U' or self.get_value(row, i) == 'W':
+					return False
+				elif self.get_value(row, i) == 'M':
+					coords.append((row,i))
+					i -= 1
+				elif self.get_value(row, i) == 'L':
+					coords.append((row,i))
+					size = len(coords)-1
+					self.boats['remaining'][size] -= 1
+					self.boats['positions'].extend(coords)
+					return True
+		elif value == 'C':
+			self.boats['remaining'][0] -= 1
+			self.boats['positions'].extend(coords)
+			return True
+
+
+				
+
+	def update_boats(self):
+		for row in range(10):
+			for col in range(10):
+				if (row,col) not in self.boats['positions']:
+					self.isBoat(row, col)
 
 	def load_board(self):
 		"""Carrega o jogo"""
@@ -147,8 +220,7 @@ class Board:
 					alterado = True
 				if self.columns[i] == 0 and self.columns_pieces[i] != 0:
 					self.fill_water([(j, i) for j in range(10)])
-					alterado = True
-			# 2- Rodeia as peças com água
+					alterado = True			# 2- Rodeia as peças com água
 			for row in range(10):
 				for col in range(10):
 					if self.isPiece(row,col):
@@ -160,18 +232,37 @@ class Board:
 					value = self.get_value(row,col)
 					horizontal = self.adjacent_horizontal_values(row,col)
 					vertical = self.adjacent_vertical_values(row,col)
-					if (value == 'T' and vertical[1] == None) or (value == 'M' and (horizontal[0] == None or horizontal[1] == None or horizontal[0] == 'W' or horizontal[1] == 'W') and vertical[1] == None):
+					if value == 'T' and vertical[1] == None:
 						self.add_piece(row+1,col,'U')
 						alterado = True
-					if value == 'B' and vertical[0] == None or (value == 'M' and (horizontal[0] == None or horizontal[1] == None or horizontal[0] == 'W' or horizontal[1] == 'W') and vertical[0] == None):
+					elif value == 'B' and vertical[0] == None:
 						self.add_piece(row-1,col,'U')
 						alterado = True
-					if value == 'L' and horizontal[1] == None or (value == 'M' and (vertical[0] == None or vertical[1] == None or vertical[0] == 'W' or vertical[1] == 'W') and horizontal[1] == None):
+					elif value == 'L' and horizontal[1] == None:
 						self.add_piece(row,col+1,'U')
 						alterado = True
-					if value == 'R' and horizontal[0] == None or (value == 'M' and (vertical[0] == None or vertical[1] == None or vertical[0] == 'W' or vertical[1] == 'W') and horizontal[0] == None):
+					elif value == 'R' and horizontal[0] == None:
 						self.add_piece(row,col-1,'U')
 						alterado = True
+					elif value == 'M':
+						# adicionar ao M
+						if self.isValid(row+1, col) and self.matrix[row+1][col] == '.':
+							if self.isPiece(row-1, col) or not self.isValid(row, col+1) or not self.isValid(row, col-1) or horizontal[0] == 'W' or horizontal[1] == 'W':
+								self.add_piece(row+1,col,'U')
+								alterado = True
+						if self.isValid(row-1, col) and self.matrix[row-1][col] == '.':
+							if self.isPiece(row+1, col) or not self.isValid(row, col+1) or not self.isValid(row, col-1) or horizontal[0] == 'W' or horizontal[1] == 'W':
+								self.add_piece(row-1,col,'U')
+								alterado = True
+						if self.isValid(row, col-1) and self.matrix[row][col-1] == '.':
+							if self.isPiece(row, col+1) or not self.isValid(row+1, col) or not self.isValid(row-1, col) or vertical[0] == 'W' or vertical[1] == 'W':
+								self.add_piece(row,col-1,'U')
+								alterado = True
+						if self.isValid(row, col+1) and self.matrix[row][col+1] == '.':
+							if self.isPiece(row, col-1) or not self.isValid(row+1, col) or not self.isValid(row-1, col) or vertical[0] == 'W' or vertical[1] == 'W':
+								self.add_piece(row,col+1,'U')
+								alterado = True
+					
 			# 4 - Adiciona peças temporarias a espaços onde só faltam essas para preencher
 			for i in range(10):
 				if self.rows[i] == self.rows_pieces[i] != 0:
@@ -215,11 +306,13 @@ class Board:
 						elif (self.isPiece(row+1,col) and self.isPiece(row-1,col)) or (self.isPiece(row,col+1) and self.isPiece(row,col-1)):
 							self.matrix[row][col] = 'M'
 							alterado = True
+		self.update_boats()
 				
 
 	
 	def print_board(self):
 		"""Imprime o tabuleiro"""
+		print(self.boats['remaining'])
 		app = Application(self.matrix, self.rows, self.columns)
 		app.mainloop()
 
@@ -239,6 +332,7 @@ class Board:
 
 			val = hint[2]
 			board.add_piece(row,col,val)
+
 		board.load_board()
 
 

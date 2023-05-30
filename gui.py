@@ -66,12 +66,12 @@ class Application(tk.Tk):
 						image = self.baixo
 					elif self.matrix[row][col] == 'R':
 						image = self.direita
-					elif self.matrix[row][col] == 'E':
+					elif self.matrix[row][col] == 'L':
 						image = self.esquerda
 					elif self.matrix[row][col] == 'C':
 						image = self.circulo
 					elif self.matrix[row][col] == 'M':
 						image = self.centro
-					elif self.matrix[row][col] == 'L':
-						image = self.esquerda
+					elif self.matrix[row][col] == 'U':
+						image = self.temporario
 					self.canvas.create_image(image_x, image_y, anchor="center", image=image)
