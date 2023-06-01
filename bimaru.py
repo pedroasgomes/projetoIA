@@ -10,12 +10,7 @@ import sys
 
 from search import (
 	Problem,
-	Node,
-	astar_search,
-	breadth_first_tree_search,
 	depth_first_tree_search,
-	greedy_search,
-	recursive_best_first_search,
 )
 
 
@@ -42,15 +37,12 @@ class Board:
 		self.empty_spaces_row = ['10' for _ in range(10)]
 		self.empty_spaces_col = ['10' for _ in range(10)]
 		self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
-		self.hints = []
 
 		self.unclosed_rows = list(range(10))
 		self.unclosed_columns = list(range(10))
 
 	def __str__(self):
 		result = ""
-		for hint in self.hints:
-			self.matrix[hint[0]][hint[1]] = 'C'
 		for row in self.matrix:
 			for cell in row:
 				if cell == 'w':
@@ -72,7 +64,6 @@ class Board:
 		board.empty_spaces_row = self.empty_spaces_row[:]
 		board.empty_spaces_col = self.empty_spaces_col[:]
 		board.boats = self.boats[:]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
-		board.hints = self.hints[:]
 		board.unclosed_rows = self.unclosed_rows[:]
 		board.unclosed_columns = self.unclosed_columns[:]
 
@@ -155,8 +146,13 @@ class Board:
 		if self.is_water_piece(piece):
 			if self.is_empty(self.get_value(row, col)):
 				self.add_piece(row, col, piece)
+			elif self.is_water_piece(self.get_value(row, col)) and self.is_hint_piece(piece):
+				self.change_tile(row, col, piece) # Garante que hints de agua sao reconhecidas como tal
+			
 		elif self.is_center_piece(piece):
 			self.place_boat(row, col, 1, 0, 0)
+			if self.is_hint_piece(piece):
+				self.change_tile(row, col, piece) # Garantir que barco de hint é reconhecido como hint
 		else:
 			self.add_piece(row, col, piece)
 			self.unexplored_hints.append((row, col, piece))
@@ -237,12 +233,10 @@ class Board:
 		for j in range(int(number_hints[0])):
 			hint = sys.stdin.readline().split()
 			board.add_hint(int(hint[1]), int(hint[2]), hint[3])
-			if hint[3] == 'C':
-				board.hints.append((int(hint[1]), int(hint[2])))
 				
 		board.sort_hints()  # Vai meter hints com M no fim da queue
 
-		board.logic_away()  # TODO OOOOOOOOOOOOOOOOOO 1337
+		board.logic_away()
 
 		return board
 
@@ -390,7 +384,6 @@ class Board:
 						col += size
 
 					elif 1 < size < 5:  # Assume [2,3,4]
-						# TODO CASO EM QUE SIZE == 2 E EH tMMp por exemplo
 						if size == 2 and self.is_middle_piece(self.get_value(row, col)) and self.is_middle_piece(self.get_value(row, col + 1)):
 							continue
 						else:
@@ -438,7 +431,6 @@ class Board:
 						row += size
 
 					elif 1 < size < 5:  # Assume [2,3,4]
-						# TODO CASO EM QUE SIZE == 2 E EH tMMp por exemplo
 						if size == 2 and self.is_middle_piece(self.get_value(row, col)) and self.is_middle_piece(self.get_value(row + 1, col)):
 							continue
 						else:
@@ -890,24 +882,9 @@ class Bimaru(Problem):
 					(state.board.get_empty_spaces_col(coordenada) != '0'):
 				return False
 
-
-
 		return True
 
-	def h(self, node: Node):
-		"""Função heuristica utilizada para a procura A*."""
-		# TODO
-		pass
-
-	# TODO: outros metodos da classe
-
-
 if __name__ == "__main__":
-	# TODO:
-	# Ler o ficheiro do standard input,
-	# Usar uma técnica de procura para resolver a instância,
-	# Retirar a solução a partir do nó resultante,
-	# Imprimir para o standard output no formato indicado.
 
 	board = Board.parse_instance()
 	problem = Bimaru(board)
@@ -915,20 +892,4 @@ if __name__ == "__main__":
 	goal_node = depth_first_tree_search(problem)
 
 
-
 	print(goal_node.state.board, sep="")
-
-"""
-	import cProfile
-	import pstats
-	with cProfile.Profile() as pr:
-		board = Board.parse_instance()
-		problem = Bimaru(board)
-		initial_state = BimaruState(board)
-		goal_node = depth_first_tree_search(problem)
-
-		print(goal_node.state.board, sep="")
-
-	stats = pstats.Stats(pr)
-	stats.sort_stats(pstats.SortKey.TIME)
-	stats.print_stats()"""
