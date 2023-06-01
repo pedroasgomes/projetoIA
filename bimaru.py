@@ -7,21 +7,17 @@
 # 104156 Henrique Pimentel
 
 import sys
+
 from search import (
 	Problem,
 	Node,
-	astar_search,
-	breadth_first_tree_search,
-	depth_first_tree_search,
-	greedy_search,
-	recursive_best_first_search,
+	depth_first_graph_search,
 )
-
-from gui import Application
 
 
 class BimaruState:
 	state_id = 0
+
 	def __init__(self, board):
 		self.board = board
 		self.id = BimaruState.state_id
@@ -29,309 +25,553 @@ class BimaruState:
 
 	def __lt__(self, other):
 		return self.id < other.id
-	
-	def unplaced_boats(self):
-		return self.board.boats
-
-	# TODO: outros metodos da classe
 
 
 class Board:
 	"""Representação interna de um tabuleiro de Bimaru."""
+
 	def __init__(self):
 		self.matrix = [['.' for _ in range(10)] for _ in range(10)]
-		self.boats = {'remaining': [4,3,2,1], 'positions': []}
-		self.rows = [] # barcos em falta na linha
-		self.columns = [] # barcos em falta na coluna
-		self.rows_pieces = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] # peças em falta na linha
-		self.columns_pieces = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10] # peças em falta na coluna
+		self.unexplored_hints = []
+		self.bpieces_left_row = []
+		self.bpieces_left_col = []
+		self.empty_spaces_row = [10 for _ in range(10)]
+		self.empty_spaces_col = [10 for _ in range(10)]
+		self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
+		self.hints = []
 
+	def copy_board(self):
+		board = Board()
+		for i in range(10):
+			board.matrix[i] = self.matrix[i][:]
+		board.unexplored_hints = self.unexplored_hints[:]
+		board.bpieces_left_row = self.bpieces_left_row[:]
+		board.bpieces_left_col = self.bpieces_left_col[:]
+		board.empty_spaces_row = self.empty_spaces_row[:]
+		board.empty_spaces_col = self.empty_spaces_col[:]
+		board.boats = self.boats[:]
 
-	def isValid(self, row: int, col: int):
-		return 0 <= row <= 9 and 0 <= col <= 9
+		board.hints = self.hints[:]
 
-	def notEmpty(self, row: int, col: int):
-		return self.matrix[row][col] != '.'
+		return board
 
-	def isPiece(self, row: int, col: int):
-		return self.isValid(row,col) and (self.matrix[row][col] == 'M' or self.matrix[row][col] == 'U' or self.matrix[row][col] == 'T' or self.matrix[row][col] == 'B' or self.matrix[row][col] == 'C' or self.matrix[row][col] == 'L' or self.matrix[row][col] == 'R')
+	def __str__(self):
+		"""Transforma board em string"""
+		string = ""
+		for row in range(10):
+			for col in range(10):
+				type = self.matrix[row][col]
+				if (row, col) in self.hints:
+					string += type.upper()
+				else:
+					if type == 'w':
+						string += '.'
+					else:
+						string += type
+			if row != 9:
+				string += '\n'
+		return string
 
-	def get_value(self, row: int, col: int) -> str:
-		"""Devolve o valor na respetiva posição do tabuleiro."""
-		if self.isValid(row, col) and self.notEmpty(row, col):
-			return self.matrix[row][col] 
+	# ------------------------- Getters -------------------------
+	def get_value(self, row: int, col: int):
+		"""Devolve o valor na respetiva posição do tabuleiro. Se estiver
+		fora retorna None, se não houver peca retorna '_' """
+		if 0 <= row <= 9 and 0 <= col <= 9:
+			return self.matrix[row][col]
 		else:
 			return None
 
-	def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
-		"""Devolve os valores imediatamente acima e abaixo,
-		respectivamente."""
-		return (self.get_value(row-1, col), self.get_value(row+1, col))
+	def get_adjacent_vertical_values(self, row: int, col: int):
+		"""Devolve os valores imediatamente acima e abaixo"""
+		return self.get_value(row - 1, col), self.get_value(row + 1, col)
 
-	def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
-		"""Devolve os valores imediatamente à esquerda e à direita,
-		respectivamente."""
-		return (self.get_value(row, col-1), self.get_value(row, col+1))
+	def get_adjacent_horizontal_values(self, row: int, col: int):
+		"""Devolve os valores imediatamente à esquerda e à direita"""
+		return self.get_value(row, col - 1), self.get_value(row, col + 1)
 
-	def get_water_positions(self, row:int, col: int, type: str):
-		"""Retorna as posições da agua para uma determinada peça"""
-		positions = [(row-1, col-1), (row-1, col), (row, col-1), (row+1, col+1), (row+1, col), (row, col+1), (row+1, col-1), (row-1, col+1)]
-		if type == 'T':
-			positions.pop(positions.index((row+1, col)))
-		elif type == 'B':
-			positions.pop(positions.index((row-1, col)))
-		elif type == 'L':
-			positions.pop(positions.index((row, col+1)))
-		elif type == 'R':
-			positions.pop(positions.index((row, col-1)))
-		elif type == 'M':
-			vertical = self.adjacent_vertical_values(row, col)
-			horizontal = self.adjacent_horizontal_values(row,col)
-			if vertical[0] == 'W' or vertical[1] == 'W' or (horizontal[0] != 'W' and horizontal[0] != None) or (horizontal[1] != 'W' and horizontal[1] != None):
-				positions.pop(positions.index((row, col-1)))
-				positions.pop(positions.index((row, col+1)))
-			if horizontal[0] == 'W' or horizontal[1] == 'W' or (vertical[0] != 'W' and vertical[0] != None) or (vertical[1] != 'W' and vertical[1] != None):
-				positions.pop(positions.index((row+1, col)))
-				positions.pop(positions.index((row-1, col)))
-			if horizontal == (None, None) and vertical == (None, None):
-				positions.pop(positions.index((row, col-1)))
-				positions.pop(positions.index((row, col+1)))
-				positions.pop(positions.index((row+1, col)))
-				positions.pop(positions.index((row-1, col)))
-		elif type == 'U' or type == 'M':
-			positions.pop(positions.index((row, col-1)))
-			positions.pop(positions.index((row, col+1)))
-			positions.pop(positions.index((row+1, col)))
-			positions.pop(positions.index((row-1, col)))
+	# ------------------------- Low level functions -------------------------
 
-		def valid_pos(pos):
-			return self.isValid(pos[0], pos[1])
-		positions = list(filter(valid_pos, positions))
-		return positions
-	
-	def fill_water(self, cells):
-		"""Preenche multiplas celas com água"""
-		preencheu = False # retorna true se preencheu pelo menos 1 cela com água
-		for cell in cells:
-			row, col = cell
-			if self.get_value(row,col) == None and self.isValid(row, col):
-				self.matrix[row][col] = 'W'
-				self.rows_pieces[row] -= 1
-				self.columns_pieces[col] -= 1
-				preencheu = True
-		return preencheu
-	
-	def add_piece(self, row: int, col: int, type: str):
-		"""Adiciona uma peça à cela correspondente"""
-		if type == 'W':
-			self.fill_water([(row, col)])
+	def add_piece(self, row: int, col: int, piece: str):
+		if self.is_boat_piece(piece):
+			self.bpieces_left_row[row] -= 1
+			self.bpieces_left_col[col] -= 1
+		self.empty_spaces_row[row] -= 1
+		self.empty_spaces_col[col] -= 1
+		self.matrix[row][col] = piece
+
+	def add_hint(self, row: int, col: int, piece: str):
+		if piece == 'w':
+			if self.get_value(row, col) == '.':
+				self.add_piece(row, col, piece)
+		elif piece == 'c':
+			self.place_boat(row, col, 1, 0, 0)
 		else:
-			self.matrix[row][col] = type
-			self.rows[row] -= 1
-			self.rows_pieces[row] -= 1
-			self.columns[col] -= 1
-			self.columns_pieces[col] -= 1
+			self.add_piece(row, col, piece)
+			self.unexplored_hints.append((row, col, piece))
 
-	def isBoat(self, row: int, col: int):
-		value = self.matrix[row][col]
-		coords = [(row,col)]
-		if value == 'T':
-			i = row+1
-			while self.isValid(i, col):
-				if self.get_value(i, col) == None or self.get_value(i, col) == 'U' or self.get_value(i, col) == 'W':
-					return False
-				elif self.get_value(i, col) == 'M':
-					coords.append((i,col))
-					i += 1
-				elif self.get_value(i, col) == 'B':
-					coords.append((i,col))
-					size = len(coords)-1
-					self.boats['remaining'][size] -= 1
-					self.boats['positions'].extend(coords)
-					return True
-				else:
-					return False
-		elif value == 'B':
-			i = row-1
-			while self.isValid(i, col):
-				if self.get_value(i, col) == None or self.get_value(i, col) == 'U' or self.get_value(i, col) == 'W':
-					return False
-				elif self.get_value(i, col) == 'M':
-					coords.append((i,col))
-					i -= 1
-				elif self.get_value(i, col) == 'T':
-					coords.append((i,col))
-					size = len(coords)-1
-					self.boats['remaining'][size] -= 1
-					self.boats['positions'].extend(coords)
-					return True
-		elif value == 'L':
-			i = col+1
-			while self.isValid(row, i):
-				if self.get_value(row, i) == None or self.get_value(row, i) == 'U' or self.get_value(row, i) == 'W':
-					return False
-				elif self.get_value(row, i) == 'M':
-					coords.append((row,i))
-					i += 1
-				elif self.get_value(row, i) == 'R':
-					coords.append((row,i))
-					size = len(coords)-1
-					self.boats['remaining'][size] -= 1
-					self.boats['positions'].extend(coords)
-					return True
-		elif value == 'R':
-			i = col-1
-			while self.isValid(row, i):
-				if self.get_value(row, i) == None or self.get_value(row, i) == 'U' or self.get_value(row, i) == 'W':
-					return False
-				elif self.get_value(row, i) == 'M':
-					coords.append((row,i))
-					i -= 1
-				elif self.get_value(row, i) == 'L':
-					coords.append((row,i))
-					size = len(coords)-1
-					self.boats['remaining'][size] -= 1
-					self.boats['positions'].extend(coords)
-					return True
-		elif value == 'C':
-			self.boats['remaining'][0] -= 1
-			self.boats['positions'].extend(coords)
-			return True
+	def is_hints_empty(self):
+		return not self.unexplored_hints
 
-	def update_boats(self):
-		for row in range(10):
-			for col in range(10):
-				if (row,col) not in self.boats['positions']:
-					self.isBoat(row, col)
+	def isCenterBoat(self, row: int, col: int):
+		return all(value in ('w', None) for value in self.get_adjacent_horizontal_values(row, col)) and \
+			all(value in ('w', None) for value in self.get_adjacent_vertical_values(row, col))
 
-	def load_board(self):
-		"""Carrega o jogo"""
-		alterado = True
-		while alterado:
-			alterado = False
-			# 1- Preenche celas cheias com água
-			for i in range(10):
-				if self.rows[i] == 0 and self.rows_pieces[i] != 0:
-					self.fill_water([(i, j) for j in range(10)])
-					alterado = True
-				if self.columns[i] == 0 and self.columns_pieces[i] != 0:
-					self.fill_water([(j, i) for j in range(10)])
-					alterado = True			# 2- Rodeia as peças com água
-			for row in range(10):
-				for col in range(10):
-					if self.isPiece(row,col):
-						if self.fill_water(self.get_water_positions(row,col,self.get_value(row,col))):
-							alterado = True
-			# 3- Adiciona peças temporarias aos TOP, BOTTOM, MIDDLE, LEFT e RIGHT
-			for row in range(10):
-				for col in range(10):
-					value = self.get_value(row,col)
-					horizontal = self.adjacent_horizontal_values(row,col)
-					vertical = self.adjacent_vertical_values(row,col)
-					if value == 'T' and vertical[1] == None:
-						self.add_piece(row+1,col,'U')
-						alterado = True
-					elif value == 'B' and vertical[0] == None:
-						self.add_piece(row-1,col,'U')
-						alterado = True
-					elif value == 'L' and horizontal[1] == None:
-						self.add_piece(row,col+1,'U')
-						alterado = True
-					elif value == 'R' and horizontal[0] == None:
-						self.add_piece(row,col-1,'U')
-						alterado = True
-					elif value == 'M':
-						# adicionar ao M
-						if self.isValid(row+1, col) and self.matrix[row+1][col] == '.':
-							if self.isPiece(row-1, col) or not self.isValid(row, col+1) or not self.isValid(row, col-1) or horizontal[0] == 'W' or horizontal[1] == 'W':
-								self.add_piece(row+1,col,'U')
-								alterado = True
-						if self.isValid(row-1, col) and self.matrix[row-1][col] == '.':
-							if self.isPiece(row+1, col) or not self.isValid(row, col+1) or not self.isValid(row, col-1) or horizontal[0] == 'W' or horizontal[1] == 'W':
-								self.add_piece(row-1,col,'U')
-								alterado = True
-						if self.isValid(row, col-1) and self.matrix[row][col-1] == '.':
-							if self.isPiece(row, col+1) or not self.isValid(row+1, col) or not self.isValid(row-1, col) or vertical[0] == 'W' or vertical[1] == 'W':
-								self.add_piece(row,col-1,'U')
-								alterado = True
-						if self.isValid(row, col+1) and self.matrix[row][col+1] == '.':
-							if self.isPiece(row, col-1) or not self.isValid(row+1, col) or not self.isValid(row-1, col) or vertical[0] == 'W' or vertical[1] == 'W':
-								self.add_piece(row,col+1,'U')
-								alterado = True
-					
-			# 4 - Adiciona peças temporarias a espaços onde só faltam essas para preencher
-			for i in range(10):
-				if self.rows[i] == self.rows_pieces[i] != 0:
-					for j in range(10):
-						if self.get_value(i,j) == None:
-							self.add_piece(i,j,'U')
-							alterado = True
-				if self.columns[i] == self.columns_pieces[i] != 0:
-					for j in range(10):
-						if self.get_value(j,i) == None:
-							self.add_piece(j,i,'U')
-							alterado = True
-			# 5 - Converte peças temporárias em peças permanentes
-			for row in range(10):
-				for col in range(10):
-					value = self.get_value(row,col)
-					if value == 'U':
-						horizontal = self.adjacent_horizontal_values(row,col)
-						vertical = self.adjacent_vertical_values(row,col)
-						# A peça é TOP sse tem uma peça abaixo, e acima dela tem ou agua ou vazio
-						if (vertical[1] == 'U' or vertical[1] == 'B' or vertical[1] == 'M') and (vertical[0] == 'W' or not self.isValid(row-1,col)):
-							self.matrix[row][col] = 'T'
-							alterado = True
-						# A peça é BOTTOM sse tem uma peça acima, e abaixo dela tem ou agua ou vazio
-						elif (vertical[0] == 'U' or vertical[0] == 'T' or vertical[0] == 'M') and (vertical[1] == 'W' or not self.isValid(row+1,col)):
-							self.matrix[row][col] = 'B'
-							alterado = True
-						# A peça é LEFT sse tem uma peça à direita, e à esquerda dela tem ou agua ou vazio
-						elif (horizontal[1] == 'U' or horizontal[1] == 'R' or horizontal[1] == 'M') and (horizontal[0] == 'W' or not self.isValid(row,col-1)):
-							self.matrix[row][col] = 'L'
-							alterado = True
-						# A peça é RIGHT sse tem uma peça à esquerda, e à direita dela tem ou agua ou vazio
-						elif (horizontal[0] == 'U' or horizontal[0] == 'L' or horizontal[0] == 'M') and (horizontal[1] == 'W' or not self.isValid(row,col+1)):
-							self.matrix[row][col] = 'R'
-							alterado = True
-						# A peça é CENTER sse tem água ou vazio à volta dela
-						elif (vertical[0] == 'W' or not self.isValid(row-1,col)) and (vertical[1] == 'W' or not self.isValid(row+1,col)) and (horizontal[0] == 'W' or not self.isValid(row,col-1)) and (horizontal[1] == 'W' or not self.isValid(row,col+1)):
-							self.matrix[row][col] = 'C'
-							alterado = True
-						# A peça é MIDDLE sse tem peças acima e abaixo OU peças à direita e à esquerda
-						elif (self.isPiece(row+1,col) and self.isPiece(row-1,col)) or (self.isPiece(row,col+1) and self.isPiece(row,col-1)):
-							self.matrix[row][col] = 'M'
-							alterado = True
-		self.update_boats()
-				
-
-	
-	def print_board(self):
-		"""Imprime o tabuleiro"""
-		print(self.boats['remaining'])
-		app = Application(self.matrix, self.rows, self.columns)
-		app.mainloop()
-
+	# ------------------------- Static functions -------------------------
 
 	@staticmethod
 	def parse_instance():
-		"""Lê o test do standard input (stdin) que é passado como argumento
+		"""Lê o test do standard input (stdin) passado como argumento
 		e retorna uma instância da classe Board."""
+
 		board = Board()
-		board.rows = [int(i) for i in sys.stdin.readline().split()[1:]]
-		board.columns = [int(i) for i in sys.stdin.readline().split()[1:]]
-		hints = int(sys.stdin.readline())
-		for i in range(hints):
-			hint = sys.stdin.readline().split()[1:]
-			row = int(hint[0])
-			col = int(hint[1])
+		rows = sys.stdin.readline().split()
+		columns = sys.stdin.readline().split()
 
-			val = hint[2]
-			board.add_piece(row,col,val)
+		for i in range(10):
+			board.bpieces_left_row.append(int(rows[i + 1]))  # Guarda o número total de peças por colocar na row[i]
+			board.bpieces_left_col.append(int(columns[i + 1]))  # Guarda o número total de peças por colocar na col[i]
 
-		board.load_board()
-		board.print_board()
+		number_hints = sys.stdin.readline().split()
+		middle_hint = []
+		for j in range(int(number_hints[0])):
+			hint = sys.stdin.readline().split()
+			board.hints.append((int(hint[1]), int(hint[2])))
+			if hint[3] == 'M':
+				middle_hint.append((int(hint[1]), int(hint[2])))
+			else:
+				board.add_hint(int(hint[1]), int(hint[2]), str(hint[3]).lower())
+		for hint in middle_hint:
+			board.add_hint(hint[0], hint[1], 'm')  # evita um sort
+
+		board.logic_away()  # TODO OOOOOOOOOOOOOOOOOO 1337
 		return board
+
+	def is_hint_piece(self, row: int, col: int):
+		return (row, col) in self.hints
+
+	@staticmethod
+	def is_boat_piece(piece: str):
+		return piece in ['c', 't', 'b', 'l', 'r', 'm', 'u']
+
+	# =========================== Upper level functions ===========================
+
+	def flood_lines(self):
+		for i in range(10):
+			if self.bpieces_left_row[i] == 0 and self.empty_spaces_row[i] != 0:
+				for j in range(10):
+					if self.matrix[i][j] == '.':
+						self.add_piece(i, j, 'w')
+			if self.bpieces_left_col[i] == 0 and self.empty_spaces_col[i] != 0:
+				for j in range(10):
+					if self.matrix[j][i] == '.':
+						self.add_piece(j, i, 'w')
+
+	def marshal_lines(self):
+
+		boats = []
+		new_boats = [0, 0, 0, 0]
+		new_hints = []
+
+		for i in range(10):
+			row = i
+			if self.bpieces_left_row[row] == self.empty_spaces_row[
+				row] != 0:  # Verifica se os espaços restantes da linha são barcos
+				col = 0
+				while col < 10:
+					size = 0
+					hints = 0
+
+					while True:
+						value = self.get_value(row, col + size)
+						if value == '.' or (value == 'm' and self.is_hint_piece(row, col + size)):
+							hints += 1
+						elif value != '.':
+							break
+						size += 1
+
+					if size == 0:
+						col += 1
+
+					elif size == 1:
+						value = self.get_value(row, col)
+						if value == '.' or value == 'u':
+							# É peça circular
+							if self.isCenterBoat(row, col):
+								new_boats[size - 1] += 1
+								if self.boats[size - 1] - new_boats[size - 1] < 0:
+									return 1
+								boats.append((row, col, size, 0, hints))
+							elif value == '.':
+								new_hints.append((row, col, 'u'))
+						col += size
+
+					elif 2 <= size <= 4:  # Navios de 2 a 4
+						new_boats[size - 1] += 1
+						if self.boats[size - 1] - new_boats[size - 1] < 0:
+							return 1
+						boats.append((row, col, size, 0, hints))
+						col += size
+
+					elif size > 4:  # barcos maiores que 4
+						return 1
+
+			col = i
+			if self.bpieces_left_col[col] == self.empty_spaces_col[col] != 0:
+				row = 0
+				while row < 10:
+					size = 0
+					hints = 0
+
+					while True:
+						value = self.get_value(row + size, col)
+						if value == 'u' or (value == 'm' and self.is_hint_piece(row + size, col)):
+							hints += 1
+						elif value != '.':
+							break
+						size += 1
+
+					if size == 0:
+						row += 1
+
+					elif size == 1:
+						value = self.get_value(row, col)
+
+						if value == '.' or value == 'u':
+							if any(boat[0] == row and boat[1] == col for boat in boats):
+								pass
+							elif self.isCenterBoat(row, col):
+								new_boats[size - 1] += 1
+								if self.boats[size - 1] - new_boats[size - 1] < 0:
+									return 1
+								boats.append((row, col, size, 1, hints))
+							elif value == '.':
+								new_hints.append((row, col, 'u'))
+						row += size
+
+					elif 2 <= size <= 4:  # Navios de 2 a 4
+						new_boats[size - 1] += 1
+						if self.boats[size - 1] - new_boats[size - 1] < 0:
+							return 1
+						boats.append((row, col, size, 1, hints))
+						row += size
+
+					elif size > 4:  # B
+						return 1
+
+		if len(boats) == 0:
+			if len(new_hints) == 0:
+				return 2
+			else:
+				for new_hint in new_hints:
+					row, col, piece = new_hint
+					self.add_hint(row, col, piece)
+
+		for boat in boats:
+			row, col, size, orientation, hints = boat
+			if self.place_boat(row, col, size, orientation, hints):
+				return 1
+
+		return 0
+
+	def logic_away(self):
+
+		self.flood_lines()
+		while True:
+			result = self.marshal_lines()
+			if result == 0:
+				self.flood_lines()
+			elif result == 1:
+				return 1
+			elif result == 2:
+				break
+
+		return 0
+
+	def place_boat(self, row: int, col: int, size: int, orientation: int, hints: int):
+		""" Signigicado das hints é: peças que pertencem ao barco e ja se encontram no tabuleiro e ja têm os
+		valores em consideracao no cálculo da informacao das linhas e colunas
+
+		"""
+
+		# Verifica se o barco dado é valido
+		if self.boat_not_valid(row, col, size, orientation, hints):
+			return 1
+
+		# Atualiza o número de barcos que faltam para o respetivo tamanho (nunca é < 0)
+		self.boats[size - 1] -= 1
+
+		# Boat of size 1
+		if size == 1:
+			if self.place_boat_single(row, col):
+				return 1
+		# Vertical Orientation of size > 2
+		elif orientation:
+			if self.place_boat_long_vertical(row, col, size):
+				return 1
+		# Horizontal Orientation of size > 2
+		else:
+			if self.place_boat_long_horizontal(row, col, size):
+				return 1
+
+		return 0
+
+	def boat_not_valid(self, row: int, col: int, size: int, orientation: int, hints: int):
+		""" Verifica se o barco dado como 'input' não viola regras triviais de barcos """
+
+		# Verifica se o novo barco (vertical) não ultrapassa o limite da respetiva coluna
+		# [As hints incluidas não são tidas em conta já que são contablizamos na criação]
+		if orientation and (size - hints) > self.bpieces_left_col[col]:
+			return True
+
+		# Verifica se o novo barco (horizontal) não ultrapassa o limite da respetiva linha
+		# [As hints incluidas não são tidas em conta já que são contablizadas na criação]
+		elif not orientation and (size - hints) > self.bpieces_left_row[row]:
+			return True
+
+		# Verifica se o novo barco (vertical) não se extende para fora do tabuleiro
+		elif orientation and (row < 0 or size + row > 10):  # is vertical
+			return True
+
+		# Verifica se o novo barco (horizontal) não se extende para fora do tabuleiro
+		elif not orientation and (col < 0 or size + col > 10):  # is horizontal
+			return True
+
+		# Verifica se o tamanho do barco respeita as regras (max size = 4)
+		elif size > 4:
+			return True
+
+		# Verifica se já foram colocados todos os barcos do tamanho dado como ‘input’
+		elif self.boats[size - 1] <= 0:
+			return True
+
+		return False
+
+	def place_boat_single(self, row: int, col: int):
+
+		if self.place_boat_line(row - 1, col, 'w', 0):  # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
+			return 1
+		if self.place_boat_line(row, col, 'c', 0):  # [ '.' '.' '.'] -> [ 'w' 'c' 'w' ]
+			return 1
+		if self.place_boat_line(row + 1, col, 'w', 0):  # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
+			return 1
+
+	def place_boat_long_vertical(self, row: int, col: int, size: int):
+
+		if self.place_boat_line(row - 1, col, 'w', 0):  # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
+			return 1
+		if self.place_boat_line(row, col, 't', 0):  # [ '.' '.' '.'] -> [ 'w' 't' 'w' ]
+			return 1
+		if self.place_boat_line(row + (size - 1), col, 'b', 0):  # [ '.' '.' '.'] -> [ 'w' 'b' 'w' ]
+			return 1
+		if self.place_boat_line(row + size, col, 'w', 0):  # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
+			return 1
+
+		for i in range(size - 2):
+			if self.place_boat_line(row + 1 + i, col, 'm', 0):  # [ '.' '.' '.'] -> [ 'w' 'm' 'w' ]
+				return 1
+
+	def place_boat_long_horizontal(self, row: int, col: int, size: int):
+
+		if self.place_boat_line(row, col - 1, 'w', 1):  # [ '.' '.' '.']^T -> [ 'w' 'w' 'w' ]^T
+			return 1
+		if self.place_boat_line(row, col, 'l', 1):  # [ '.' '.' '.']^T -> [ 'w' 'l' 'w' ]^T
+			return 1
+		if self.place_boat_line(row, col + (size - 1), 'r', 1):  # [ '.' '.' '.']^T -> [ 'w' 'r' 'w' ]^T
+			return 1
+		if self.place_boat_line(row, col + size, 'w', 1):  # [ '.' '.' '.']^T -> [ 'w' 'w' 'w' ]^T
+			return 1
+
+		for i in range(size - 2):
+			if self.place_boat_line(row, col + 1 + i, 'm', 1):  # [ '.' '.' '.']^T -> [ 'w' 'm' 'w' ]^T
+				return 1
+
+	def place_boat_line(self, row: int, col: int, piece: str, direction: int):
+
+		water_pieces = [-1, 1]
+
+		if self.is_boat_piece(piece):
+			value = self.get_value(row, col)
+			if value == '.':
+				self.add_piece(row, col, piece)
+			elif self.is_boat_piece(value):
+				if (row, col, piece) in self.unexplored_hints:
+					self.unexplored_hints.remove((row, col, value))
+					pass
+				elif value == 'u':
+					self.unexplored_hints.remove((row, col, value))
+					self.matrix[row][col] = piece
+				else:
+					return 1
+		elif piece == 'w':
+			water_pieces.append(0)
+
+		new_row = row
+		new_col = col
+		for i in water_pieces:
+			if direction:  # Itera sobre a mesma coluna
+				new_row = row + i
+			else:  # Itera sobre a mesma linha
+				new_col = col + i
+			value = self.get_value(new_row, new_col)
+			if value == None or value == 'w':
+				continue
+			if value == '.':
+				self.add_piece(new_row, new_col, 'w')
+			elif self.is_boat_piece(value):
+				return 1
+
+		return 0
+
+	# ----------------------- Helper functions for Actions -----------------------
+
+	def get_hint_based_actions(self):  # Retorna uma ou mais actions com um unico move
+
+		hints = 1
+		actions = []
+
+		for hint in self.unexplored_hints:
+			row, col, piece = hint
+
+			if piece == 'm':
+				pass
+			elif piece == 'u':
+				if self.isCenterBoat(row, col):
+					actions.append((row, col, 1, 0, hints))
+					return actions
+			elif piece == 'c':
+				actions.append((row, col, 1, 0, hints))
+				return actions
+			else:
+				for i in range(1, 4):
+					if self.boats[i] > 0:
+						size = i+1
+						if piece == 't':
+							next_piece = str(self.get_value(row + size - 1, col)).lower()
+							restrictions = ('w', 'r', 'l', 't', 'c')
+							coords = (row, col, i + 1, 1)
+							opposite_piece = 'b'
+							continue_pieces = ('m', 'u')
+						elif piece == 'b':
+							next_piece = str(self.get_value(row - size + 1, col)).lower()
+							restrictions = ('w', 'r', 'l', 'b', 'c')
+							coords = (row - size + 1, col, i + 1, 1)
+							opposite_piece = 't'
+							continue_pieces = ('m', 'u')
+						elif piece == 'l':
+							next_piece = str(self.get_value(row, col+size-1)).lower()
+							restrictions = ('w', 'l', 't', 'b', 'c')
+							coords = (row, col, i + 1, 0)
+							opposite_piece = 'r'
+							continue_pieces = ('m', 'u')
+						elif piece == 'r':
+							next_piece = str(self.get_value(row, col - size + 1)).lower()
+							restrictions = ('w', 'r', 't', 'b', 'c')
+							coords = (row,  col - size + 1, i + 1, 0)
+							opposite_piece = 'l'
+							continue_pieces = ('m', 'u')
+						else:
+							continue
+
+						if next_piece in restrictions:
+							break
+						elif next_piece == '.':
+							actions.append((coords[0], coords[1], coords[2], coords[3], hints))
+						elif next_piece == opposite_piece:
+							hints += 1
+							actions.append((coords[0], coords[1], coords[2], coords[3], hints))
+							return actions
+						elif next_piece in continue_pieces:
+							hints += 1
+
+			return actions
+
+	def get_guess_boats_row(self, row: int, size: int):
+
+		actions = []
+		hints = 0
+
+		col = 0
+		while col < 10:
+			max_size = 0
+			value = self.get_value(row, col)
+			if value == '.' or value == 'u':
+				while True:
+					value = self.get_value(row, col + max_size)
+					if value == 'u' or value == 'm':
+						hints += 1
+					elif value != '.':
+						break
+					max_size += 1
+
+				if max_size >= size:
+					for delta in range(0, max_size - size + 1):
+						actions.append((row, col + delta, size, 0, hints))
+			col += max_size + 1
+		return actions
+
+	def get_guess_boats_col(self, col: int, size: int):
+
+		actions = []
+		hints = 0
+
+		row = 0
+		while row < 10:
+			max_size = 0
+			value = self.get_value(row, col)
+			if value == '.' or value == 'u':
+				while True:
+					value = self.get_value(row + max_size, col)
+					if value == 'u' or value == 'm':
+						hints += 1
+					elif value != '.':
+						break
+					max_size += 1
+
+				if max_size >= size:
+					for delta in range(0, max_size - size + 1):
+						actions.append((row + delta, col, size, 1, hints))
+
+			row += max_size + 1
+
+		return actions
+
+	def get_guess_based_actions(self):  # Retorna uma ou mais actions com um unico move
+
+		if self.boats == [0, 0, 0, 0]:
+			return []
+
+		size = 4
+		while self.boats[size - 1] == 0:
+			size -= 1
+
+		possible_rows = []
+		possible_cols = []
+		actions = []
+
+		hints_rows = [0 for _ in range(10)]
+		hints_cols = [0 for _ in range(10)]
+
+		for hint in self.unexplored_hints:
+			row, col, piece = hint
+			hints_rows[row] += 1
+			hints_cols[col] += 1
+
+		for coordinate in range(10):
+
+			if self.bpieces_left_row[coordinate] >= size - hints_rows[coordinate]:  # UNICAS ROWS POSSIVEIS
+				possible_rows.append(coordinate)
+
+			if self.bpieces_left_col[coordinate] >= size - hints_cols[coordinate]:  # UNICAS COLS POSSIVEIS
+				possible_cols.append(coordinate)
+
+		# AGORA É SÓ VER DENTRO DESSAS QUAIS SÃO OS BOATS DE SIZE POSSIBEL, SE É QUE EXISTEM
+
+		for row in possible_rows:
+			actions.extend(self.get_guess_boats_row(row, size))
+		for col in possible_cols:
+			actions.extend(self.get_guess_boats_col(col, size))
+
+		return actions
 
 
 class Bimaru(Problem):
@@ -340,19 +580,23 @@ class Bimaru(Problem):
 		super().__init__(BimaruState(board))
 
 	def actions(self, state: BimaruState):
-		"""Retorna uma lista de ações que podem ser executadas a
-		partir do estado passado como argumento."""
-		unplaced_boats = state.unplaced_boats()
-		actions = []
-		if unplaced_boats[3] != 0:
-			actions.append("place_boat_4")
-		if unplaced_boats[2] != 0:
-			actions.append("place_boat_3")
-		if unplaced_boats[1] != 0:
-			actions.append("place_boat_2")
-		if unplaced_boats[0] != 0:
-			actions.append("place_boat_1")
+		"""Retorna uma lista de ações que podem ser executadas a partir
+		do estado passado como argumento. Retorna None quando nao consegue
+		encontrar uma unica jogada para devolver como ação. Uma açãoo
+		pode ser várias jogadas consecutivas caso uma das jogadas cause uma
+		chain reaction obrigatória. A funcao action pode entao retornar varias
+		actions e cada action pode ter varias jogadas em cadeia. A funcao result
+		aceita então um tuplo de jogadas. OU SEJA UMA ACAO E UM TUPLO DE JOGADAS"""
 
+		if state is None:
+			return []
+
+		if not state.board.is_hints_empty():
+			actions = state.board.get_hint_based_actions()  # Retorna uma unica action com 1 move
+			if len(actions) > 0:
+				return actions
+
+		actions = state.board.get_guess_based_actions()  # Retorna varias actions com 1 move
 		return actions
 
 	def result(self, state: BimaruState, action):
@@ -360,16 +604,37 @@ class Bimaru(Problem):
 		'state' passado como argumento. A ação a executar deve ser uma
 		das presentes na lista obtida pela execução de
 		self.actions(state)."""
-		pass
+
+		new_board = state.board.copy_board()
+		row, col, size, orientation, hints = action
+
+		if new_board.place_boat(row, col, size, orientation, hints) or new_board.logic_away():
+			return None
+
+		return BimaruState(new_board)
 
 	def goal_test(self, state: BimaruState):
 		"""Retorna True se e só se o estado passado como argumento é
 		um estado objetivo. Deve verificar se todas as posições do tabuleiro
-		estão preenchidas de acordo com as regras do problema."""
-		boats = state.unplaced_boats()
-		for boat in unplaced_boats:
-			if boat != 0:
+		estão preenchidas conforme as regras do problema."""
+
+		# Verifica se é um estado válido
+		if state is None:
+			return False
+
+		# Verifica se todos os barcos foram colocados
+		for i in range(4):
+			if state.board.boats[i] != 0:
 				return False
+
+		# Verifica se todas as colunas e linhas estão cheias e com o número de peças de barco correto
+		for coordenada in range(10):
+			if (state.board.bpieces_left_row[coordenada] != 0) or \
+					(state.board.bpieces_left_col[coordenada] != 0) or \
+					(state.board.empty_spaces_row[coordenada] != 0) or \
+					(state.board.empty_spaces_col[coordenada] != 0):
+				return False
+
 		return True
 
 	def h(self, node: Node):
@@ -377,15 +642,16 @@ class Bimaru(Problem):
 		# TODO
 		pass
 
-	# TODO: outros metodos da classe
-
 
 if __name__ == "__main__":
-
-	board = Board().parse_instance()
-
 	# TODO:
-
+	# Ler o ficheiro do standard input,
 	# Usar uma técnica de procura para resolver a instância,
 	# Retirar a solução a partir do nó resultante,
 	# Imprimir para o standard output no formato indicado.
+	board = Board.parse_instance()
+	problem = Bimaru(board)
+	initial_state = BimaruState(board)
+	goal_node = depth_first_graph_search(problem)
+
+	print(goal_node.state.board, sep="")
