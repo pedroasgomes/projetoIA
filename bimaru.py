@@ -13,6 +13,8 @@ from search import (
 	depth_first_tree_search,
 )
 
+VERTICAL = 1
+HORIZONTAL = 0
 
 class BimaruState:
 	state_id = 0
@@ -38,6 +40,9 @@ class Board:
 		self.empty_spaces_col = [10 for _ in range(10)]
 		self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
 
+		self.unclosed_rows = list(range(10))
+		self.unclosed_columns = list(range(10))
+
 	def __str__(self):
 		"""Retorna string com representação do tabuleiro"""
 		string = ""
@@ -61,6 +66,8 @@ class Board:
 		board.empty_spaces_row = self.empty_spaces_row[:]
 		board.empty_spaces_col = self.empty_spaces_col[:]
 		board.boats = self.boats[:]
+		board.unclosed_rows = self.unclosed_rows[:]
+		board.unclosed_columns = self.unclosed_columns[:]
 		return board
 
 	# ------------------------- Getters -------------------------
@@ -112,6 +119,14 @@ class Board:
 				available_sizes.append(size)
 		return available_sizes
 
+	def get_unclosed_rows(self):
+		"""Retorna as linhas por fechar"""
+		return self.unclosed_rows
+
+	def get_unclosed_columns(self):
+		"""Retorna as colunas por fechar"""
+		return self.unclosed_columns
+
 	# ------------------------- Low level functions -------------------------
 
 	def set_piece(self, row: int, col: int, piece: str):
@@ -133,7 +148,7 @@ class Board:
 			elif self.is_water_piece(self.get_value(row, col)) and self.is_hint_piece(piece):
 				self.set_piece(row, col, piece) # Garante que hints de agua sao reconhecidas como tal
 		elif self.is_center_piece(piece):
-			self.place_boat(row, col, 1, 0, 0)
+			self.place_boat(row, col, 1, HORIZONTAL, 0)
 			if self.is_hint_piece(piece):
 				self.set_piece(row, col, piece) # Garantir que barco de hint é reconhecido como hint
 		else:
@@ -143,6 +158,11 @@ class Board:
 	def remove_hint(self, row: int, col: int, piece: str):
 		"""Remove uma hint da lista, após processá-la"""
 		self.unexplored_hints.remove((row, col, piece))
+
+	def sort_hints(self):
+		""" Coloca peças 'M' no fim da queue já que essas peças podem não ter
+		orientação e podem aumentar a ramificação da procura desnecessariamente."""
+		self.unexplored_hints = sorted(self.unexplored_hints, key=lambda x: (x[2] == 'M'))
 
 	def is_hints_empty(self):
 		"""Retorna True se não houver hints por processar"""
@@ -161,6 +181,14 @@ class Board:
 		"""Atualiza o número de espaços vazios"""
 		self.empty_spaces_row[row] -= 1
 		self.empty_spaces_col[col] -= 1
+
+	def add_closed_row(self, row: int):
+		"""Dá por terminada uma determinada linha"""
+		self.unclosed_rows.remove(row)
+
+	def add_closed_column(self, column: int):
+		"""Dá por terminada uma determinada coluna"""
+		self.unclosed_columns.remove(column)
 
 	def is_surrounded(self, row: int, col: int):
 		"""Retorna True sse está rodeada por água ou fronteira"""
@@ -183,20 +211,16 @@ class Board:
 			board.remaining_pieces_col.append(int(columns[i+1]))  # Guarda o número total de peças por colocar na col[i]
 
 		number_hints = sys.stdin.readline().split()
-		middle_hints = []
 		for j in range(int(number_hints[0])):
 			hint = sys.stdin.readline().split()
-			if hint[3] == 'M':
-				middle_hints.append((int(hint[1]), int(hint[2])))
-			else:
-				board.add_hint(int(hint[1]), int(hint[2]), hint[3])
+			board.add_hint(int(hint[1]), int(hint[2]), hint[3])
 				
-		for hint in middle_hints:
-			board.add_hint(hint[0], hint[1], 'M')
+		board.sort_hints()  # Vai meter hints com M no fim da queue
 
 		board.logic_away()
 
 		return board
+
 
 	@staticmethod
 	def is_inside_board(row: int, col: int):
@@ -263,20 +287,34 @@ class Board:
 		"""Retorna True se for peça por definir"""
 		return piece in ['u','U']
 
+	@staticmethod
+	def is_horizontal(orientation: int):
+		"""Retorna True se orientação for horizontal"""
+		return orientation == HORIZONTAL
+
+	@staticmethod
+	def is_vertical(orientation: int):
+		"""Retorna True se orientação for vertical"""
+		return orientation == VERTICAL
+
+
 	# =========================== Upper level functions ===========================
 
 	def flood_lines(self):
 		"""Preenche linhas e colunas completas com água"""
-		for i in range(10):
-			if self.get_empty_spaces_row(i) != 0 and self.get_remaining_pieces_row(i) == 0:
+		for row in list(self.get_unclosed_rows()):
+			if self.get_remaining_pieces_row(row) == 0:
+				self.add_closed_row(row)
 				for col in range(10):
-					if self.is_empty_piece(self.get_value(i, col)):
-						self.add_piece(i, col, 'w')
+					if self.is_empty_piece(self.get_value(row, col)):
+						self.add_piece(row, col, 'w')
 
-			if self.get_empty_spaces_col(i) != 0 and self.get_remaining_pieces_col(i) == 0:
+		for col in list(self.get_unclosed_columns()):
+			if self.get_remaining_pieces_col(col) == 0:
+				self.add_closed_column(col)
 				for row in range(10):
-					if self.is_empty_piece(self.get_value(row, i)):
-						self.add_piece(row, i, 'w')
+					if self.is_empty_piece(self.get_value(row, col)):
+						self.add_piece(row, col, 'w')
 
 	def marshal_lines(self):
 		"""Preenche linhas/colunas onde os espaços vazios correspondem a barcos"""
@@ -284,9 +322,8 @@ class Board:
 		boats_copy = self.boats[:]
 		new_hints = []
 
-		for i in range(10):
-			row = i
-			if self.get_empty_spaces_row(row) == self.get_remaining_pieces_row(row) > 0:
+		for row in self.get_unclosed_rows():
+			if self.get_remaining_pieces_row(row) == self.get_empty_spaces_row(row):  # Assume-se que nunca vai ser <= 0
 				col = 0
 				while col < 10:
 					size = 0
@@ -307,7 +344,7 @@ class Board:
 								boats_copy[size - 1] -= 1
 								if boats_copy[size - 1] < 0:
 									return 1
-								boats.append((row, col, size, 0, hints))
+								boats.append((row, col, size, HORIZONTAL, hints))
 							else:
 								new_hints.append((row, col, 'U'))
 						if self.is_unknown_piece(self.get_value(row, col)):
@@ -315,7 +352,7 @@ class Board:
 								boats_copy[size - 1] -= 1
 								if boats_copy[size - 1] < 0:
 									return 1
-								boats.append((row, col, size, 0, hints))
+								boats.append((row, col, size, HORIZONTAL, hints))
 
 						col += size
 
@@ -326,14 +363,14 @@ class Board:
 							boats_copy[size - 1] -= 1
 							if boats_copy[size - 1] < 0:
 								return 1
-							boats.append((row, col, size, 0, hints))
+							boats.append((row, col, size, HORIZONTAL, hints))
 						col += size
 
 					elif size > 4:
 						return 1
 
-			col = i
-			if self.get_empty_spaces_col(col) == self.get_remaining_pieces_col(col) > 0:
+		for col in self.get_unclosed_columns():
+			if self.get_remaining_pieces_col(col) == self.get_empty_spaces_col(col):  # Assume-se que nunca vai ser <= 0
 				row = 0
 				while row < 10:
 					size = 0
@@ -355,7 +392,7 @@ class Board:
 								boats_copy[size - 1] -= 1
 								if boats_copy[size - 1] < 0:
 									return 1
-								boats.append((row, col, size, 0, hints))
+								boats.append((row, col, size, HORIZONTAL, hints))
 							else:
 								new_hints.append((row, col, 'U'))
 						if self.is_unknown_piece(self.get_value(row, col)):
@@ -363,7 +400,7 @@ class Board:
 								boats_copy[size - 1] -= 1
 								if boats_copy[size - 1] < 0:
 									return 1
-								boats.append((row, col, size, 0, hints))
+								boats.append((row, col, size, HORIZONTAL, hints))
 						row += size
 
 					elif 1 < size < 5:  # Assume [2,3,4]
@@ -373,21 +410,21 @@ class Board:
 							boats_copy[size - 1] -= 1
 							if boats_copy[size - 1] < 0:
 								return 1
-							boats.append((row, col, size, 1, hints))
+							boats.append((row, col, size, VERTICAL, hints))
 							row += size
 
 					elif size > 4:
 						return 1
 
-		if len(boats) == 0: # Se não tiver encontrado barcos completos
+		if len(boats) == 0:
 			if len(new_hints) == 0:
 				return 2
-			else: # adiciona cada hint descoberta no processo para ser processada
+			else:
 				for new_hint in new_hints:
 					row, col, piece = new_hint
 					self.add_hint(row, col, piece)
 
-		for boat in boats: # adiciona cada barco completo à lista
+		for boat in boats:
 			row, col, size, orientation, hints = boat
 			if self.place_boat(row, col, size, orientation, hints):
 				return 1
@@ -395,12 +432,12 @@ class Board:
 		return 0
 
 	def logic_away(self):
-		"""Processa o tabuleiro de jogo"""
-		self.flood_lines() # Preenche com água linhas/colunas cheias
+
+		self.flood_lines()
 		while True:
-			result = self.marshal_lines() # Preenche com barcos linhas/colunas onde corresponde a barco
+			result = self.marshal_lines()
 			if result == 0:
-				self.flood_lines() # Caso tenha colocado algum barco, voltar a preencher com água
+				self.flood_lines()
 			elif result == 1:
 				return 1
 			elif result == 2:
@@ -424,7 +461,7 @@ class Board:
 			if self.place_boat_single(row, col):
 				return 1
 		# Vertical Orientation of size > 2
-		elif orientation:
+		elif self.is_vertical(orientation):
 			if self.place_boat_long_vertical(row, col, size):
 				return 1
 		# Horizontal Orientation of size > 2
@@ -436,34 +473,29 @@ class Board:
 
 	def boat_not_valid(self, row: int, col: int, size: int, orientation: int, hints: int):
 		""" Verifica se o barco dado como 'input' não viola regras triviais de barcos """
-
-		# Verifica se o novo barco (vertical) não ultrapassa o limite da respetiva coluna
-		# [As hints incluidas não são tidas em conta já que são contablizamos na criação]
-		if orientation and (size - hints) > self.get_remaining_pieces_col(col):
+		if size>4:
+			# Verifica se o tamanho do barco respeita as regras (max size = 4)
+			return True 
+		elif self.boats[size-1] <= 0:
+			# Verifica se já foram colocados todos os barcos do tamanho dado como ‘input’
 			return True
-
-		# Verifica se o novo barco (horizontal) não ultrapassa o limite da respetiva linha
-		# [As hints incluidas não são tidas em conta já que são contablizadas na criação]
-		elif not orientation and (size - hints) > self.get_remaining_pieces_row(row):
-			return True
-
-		# Verifica se o novo barco (vertical) não se extende para fora do tabuleiro
-		elif orientation and (row < 0 or size + row > 10):  # is vertical
-			return True
-
-		# Verifica se o novo barco (horizontal) não se extende para fora do tabuleiro
-		elif not orientation and (col < 0 or size + col > 10):  # is horizontal
-			return True
-
-		# Verifica se o tamanho do barco respeita as regras (max size = 4)
-		elif size > 4:
-			return True
-
-		# Verifica se já foram colocados todos os barcos do tamanho dado como ‘input’
-		elif self.boats[size - 1] <= 0:
-			return True
-
-		return False
+		elif self.is_vertical(orientation):
+			if (size-hints) > self.get_remaining_pieces_col(col):
+				# Verifica se o barco não ultrapassa o limite da respetiva coluna
+				# [As hints incluidas não são tidas em conta já que são contablizamos na criação]
+				return True
+			elif row<0 or size+row>10:
+				# Verifica se o barco não se extende para fora do tabuleiro
+				return True
+		elif self.is_horizontal(orientation):
+			if size-hints > self.get_remaining_pieces_row(row):
+				# Verifica se o barco não ultrapassa o limite da respetiva linha
+				# [As hints incluidas não são tidas em conta já que são contablizadas na criação]
+				return True
+			elif col<0 or size+col>10:
+				# Verifica se o novo barco (horizontal) não se extende para fora do tabuleiro
+				return True
+		return False # Barco válido
 
 	def place_boat_single(self, row: int, col: int):
 
@@ -553,7 +585,7 @@ class Board:
 			row, col, piece = hint
 
 			if self.is_center_piece(piece):
-				actions.append((row, col, 1, 0, hints))
+				actions.append((row, col, 1, HORIZONTAL, hints))
 				return actions
 
 			elif self.is_top_piece(piece):
@@ -568,12 +600,12 @@ class Board:
 						break
 
 					elif self.is_empty_piece(next_piece):
-						actions.append((row, col, size, 1, hints))
+						actions.append((row, col, size, VERTICAL, hints))
 						continue
 
 					elif next_piece == 'B':
 						hints += 1
-						actions.append((row, col, size, 1, hints))
+						actions.append((row, col, size, VERTICAL, hints))
 						return actions
 
 					elif next_piece in ('M', 'U'):
@@ -594,12 +626,12 @@ class Board:
 						break
 
 					elif self.is_empty_piece(next_piece):
-						actions.append((row - size + 1, col, size, 1, hints))
+						actions.append((row - size + 1, col, size, VERTICAL, hints))
 						continue
 
 					elif next_piece == 'T':
 						hints += 1
-						actions.append((row - size + 1, col, size, 1, hints))
+						actions.append((row - size + 1, col, size, VERTICAL, hints))
 						return actions
 
 					elif next_piece in ('M', 'U'):
@@ -620,12 +652,12 @@ class Board:
 						break
 
 					elif self.is_empty_piece(next_piece):
-						actions.append((row, col, size, 0, hints))
+						actions.append((row, col, size, HORIZONTAL, hints))
 						continue
 
 					elif next_piece == 'R':
 						hints += 1
-						actions.append((row, col, size, 0, hints))
+						actions.append((row, col, size, HORIZONTAL, hints))
 						return actions
 
 					elif next_piece in ('M', 'U'):
@@ -646,12 +678,12 @@ class Board:
 						break
 
 					elif self.is_empty_piece(next_piece):
-						actions.append((row, col - size + 1, size, 0, hints))
+						actions.append((row, col - size + 1, size, HORIZONTAL, hints))
 						continue
 
 					elif next_piece == 'L':
 						hints += 1
-						actions.append((row, col - size + 1, size, 0, hints))
+						actions.append((row, col - size + 1, size, HORIZONTAL, hints))
 						return actions
 
 					elif next_piece in ('M', 'U'):
@@ -662,7 +694,7 @@ class Board:
 
 			elif self.is_unknown_piece(piece):
 				if self.is_surrounded(row, col):
-					actions.append((row, col, 1, 0, hints))
+					actions.append((row, col, 1, HORIZONTAL, hints))
 					return actions
 
 			elif self.is_middle_piece(piece):
@@ -690,7 +722,7 @@ class Board:
 
 				if max_size >= size:
 					for delta in range(0, max_size - size + 1):
-						actions.append((row, col + delta, size, 0, hints))
+						actions.append((row, col + delta, size, HORIZONTAL, hints))
 
 			col += max_size + 1
 
@@ -716,7 +748,7 @@ class Board:
 
 				if max_size >= size:
 					for delta in range(0, max_size - size + 1):
-						actions.append((row + delta, col, size, 1, hints))
+						actions.append((row + delta, col, size, VERTICAL, hints))
 
 			row += max_size + 1
 
@@ -818,5 +850,4 @@ if __name__ == "__main__":
 	problem = Bimaru(board)
 	initial_state = BimaruState(board)
 	goal_node = depth_first_tree_search(problem)
-
 	print(goal_node.state.board, sep="")
