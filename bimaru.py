@@ -200,54 +200,67 @@ class Board:
 
 	@staticmethod
 	def is_inside_board(row: int, col: int):
+		"""Retorna True se coordenadas estiverem corretas"""
 		return 0 <= row <= 9 and 0 <= col <= 9
 
 	@staticmethod
 	def is_hint_piece(piece: str):
+		"""Retorna True se é uma hint"""
 		return type(piece) == str and piece.isupper()
 
 	@staticmethod
 	def is_new_piece(piece: str):
+		"""Retorna True se é não uma hint"""
 		return type(piece) == str and piece.islower()
 
 	@staticmethod
 	def is_empty_piece(piece: str):
+		"""Retorna True se for vazio"""
 		return piece == '.'
 
 	@staticmethod
 	def is_water_piece(piece: str):
+		"""Retorna True se for água"""
 		return piece in ['w','W']
 
 	@staticmethod
 	def is_boat_piece(piece: str):
+		"""Retorna True se for barco"""
 		return piece in ['C', 'c', 'T', 't', 'B', 'b', 'L', 'l', 'R', 'r', 'M', 'm', 'U', 'u']
 
 	@staticmethod
 	def is_center_piece(piece: str):
+		"""Retorna True se for peça de centro"""
 		return piece in ['c','C']
 
 	@staticmethod
 	def is_top_piece(piece: str):
+		"""Retorna True se for peça de topo"""
 		return piece in ['t','T']
 
 	@staticmethod
 	def is_bottom_piece(piece: str):
+		"""Retorna True se for peça de baixo"""
 		return piece in ['b','B']
 
 	@staticmethod
 	def is_left_piece(piece: str):
+		"""Retorna True se for peça da esquerda"""
 		return piece in ['l','L']
 
 	@staticmethod
 	def is_right_piece(piece: str):
+		"""Retorna True se for peça da direita"""
 		return piece in ['r','R']
 
 	@staticmethod
 	def is_middle_piece(piece: str):
+		"""Retorna True se for peça do meio"""
 		return piece in ['m','M']
 
 	@staticmethod
 	def is_unknown_piece(piece: str):
+		"""Retorna True se for peça por definir"""
 		return piece in ['u','U']
 
 	# =========================== Upper level functions ===========================
@@ -266,7 +279,7 @@ class Board:
 						self.add_piece(row, i, 'w')
 
 	def marshal_lines(self):
-
+		"""Preenche linhas/colunas onde os espaços vazios correspondem a barcos"""
 		boats = []
 		boats_copy = self.boats[:]
 		new_hints = []
@@ -366,15 +379,15 @@ class Board:
 					elif size > 4:
 						return 1
 
-		if len(boats) == 0:
+		if len(boats) == 0: # Se não tiver encontrado barcos completos
 			if len(new_hints) == 0:
 				return 2
-			else:
+			else: # adiciona cada hint descoberta no processo para ser processada
 				for new_hint in new_hints:
 					row, col, piece = new_hint
 					self.add_hint(row, col, piece)
 
-		for boat in boats:
+		for boat in boats: # adiciona cada barco completo à lista
 			row, col, size, orientation, hints = boat
 			if self.place_boat(row, col, size, orientation, hints):
 				return 1
@@ -382,11 +395,12 @@ class Board:
 		return 0
 
 	def logic_away(self):
-		self.flood_lines()
+		"""Processa o tabuleiro de jogo"""
+		self.flood_lines() # Preenche com água linhas/colunas cheias
 		while True:
-			result = self.marshal_lines()
+			result = self.marshal_lines() # Preenche com barcos linhas/colunas onde corresponde a barco
 			if result == 0:
-				self.flood_lines()
+				self.flood_lines() # Caso tenha colocado algum barco, voltar a preencher com água
 			elif result == 1:
 				return 1
 			elif result == 2:
