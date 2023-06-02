@@ -144,11 +144,6 @@ class Board:
 		"""Remove uma hint da lista, após processá-la"""
 		self.unexplored_hints.remove((row, col, piece))
 
-	def sort_hints(self):
-		""" Coloca peças 'M' no fim da queue já que essas peças podem não ter
-		orientação e podem aumentar a ramificação da procura desnecessariamente."""
-		self.unexplored_hints = sorted(self.unexplored_hints, key=lambda x: (x[2] == 'M'))
-
 	def is_hints_empty(self):
 		"""Retorna True se não houver hints por processar"""
 		return not self.unexplored_hints
@@ -188,11 +183,16 @@ class Board:
 			board.remaining_pieces_col.append(int(columns[i+1]))  # Guarda o número total de peças por colocar na col[i]
 
 		number_hints = sys.stdin.readline().split()
+		middle_hints = []
 		for j in range(int(number_hints[0])):
 			hint = sys.stdin.readline().split()
-			board.add_hint(int(hint[1]), int(hint[2]), hint[3])
+			if hint[3] == 'M':
+				middle_hints.append((int(hint[1]), int(hint[2])))
+			else:
+				board.add_hint(int(hint[1]), int(hint[2]), hint[3])
 				
-		board.sort_hints()  # Vai meter hints com M no fim da queue
+		for hint in middle_hints:
+			board.add_hint(hint[0], hint[1], 'M')
 
 		board.logic_away()
 
