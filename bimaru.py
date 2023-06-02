@@ -38,9 +38,6 @@ class Board:
 		self.empty_spaces_col = [10 for _ in range(10)]
 		self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
 
-		self.unclosed_rows = list(range(10))
-		self.unclosed_columns = list(range(10))
-
 	def __str__(self):
 		"""Retorna string com representação do tabuleiro"""
 		string = ""
@@ -64,8 +61,6 @@ class Board:
 		board.empty_spaces_row = self.empty_spaces_row[:]
 		board.empty_spaces_col = self.empty_spaces_col[:]
 		board.boats = self.boats[:]
-		board.unclosed_rows = self.unclosed_rows[:]
-		board.unclosed_columns = self.unclosed_columns[:]
 		return board
 
 	# ------------------------- Getters -------------------------
@@ -116,14 +111,6 @@ class Board:
 			if self.get_remaining_boats(size) > 0:
 				available_sizes.append(size)
 		return available_sizes
-
-	def get_unclosed_rows(self):
-		"""Retorna as linhas por fechar"""
-		return self.unclosed_rows
-
-	def get_unclosed_columns(self):
-		"""Retorna as colunas por fechar"""
-		return self.unclosed_columns
 
 	# ------------------------- Low level functions -------------------------
 
@@ -179,14 +166,6 @@ class Board:
 		"""Atualiza o número de espaços vazios"""
 		self.empty_spaces_row[row] -= 1
 		self.empty_spaces_col[col] -= 1
-
-	def add_closed_row(self, row: int):
-		"""Dá por terminada uma determinada linha"""
-		self.unclosed_rows.remove(row)
-
-	def add_closed_column(self, column: int):
-		"""Dá por terminada uma determinada coluna"""
-		self.unclosed_columns.remove(column)
 
 	def is_surrounded(self, row: int, col: int):
 		"""Retorna True sse está rodeada por água ou fronteira"""
@@ -275,19 +254,16 @@ class Board:
 
 	def flood_lines(self):
 		"""Preenche linhas e colunas completas com água"""
-		for row in list(self.get_unclosed_rows()):
-			if self.get_remaining_pieces_row(row) == 0:
-				self.add_closed_row(row)
+		for i in range(10):
+			if self.get_empty_spaces_row(i) != 0 and self.get_remaining_pieces_row(i) == 0:
 				for col in range(10):
-					if self.is_empty_piece(self.get_value(row, col)):
-						self.add_piece(row, col, 'w')
+					if self.is_empty_piece(self.get_value(i, col)):
+						self.add_piece(i, col, 'w')
 
-		for col in list(self.get_unclosed_columns()):
-			if self.get_remaining_pieces_col(col) == 0:
-				self.add_closed_column(col)
+			if self.get_empty_spaces_col(i) != 0 and self.get_remaining_pieces_col(i) == 0:
 				for row in range(10):
-					if self.is_empty_piece(self.get_value(row, col)):
-						self.add_piece(row, col, 'w')
+					if self.is_empty_piece(self.get_value(row, i)):
+						self.add_piece(row, i, 'w')
 
 	def marshal_lines(self):
 
@@ -295,8 +271,9 @@ class Board:
 		boats_copy = self.boats[:]
 		new_hints = []
 
-		for row in self.get_unclosed_rows():
-			if self.get_remaining_pieces_row(row) == self.get_empty_spaces_row(row):  # Assume-se que nunca vai ser <= 0
+		for i in range(10):
+			row = i
+			if self.get_empty_spaces_row(row) == self.get_remaining_pieces_row(row) > 0:
 				col = 0
 				while col < 10:
 					size = 0
@@ -342,8 +319,8 @@ class Board:
 					elif size > 4:
 						return 1
 
-		for col in self.get_unclosed_columns():
-			if self.get_remaining_pieces_col(col) == self.get_empty_spaces_col(col):  # Assume-se que nunca vai ser <= 0
+			col = i
+			if self.get_empty_spaces_col(col) == self.get_remaining_pieces_col(col) > 0:
 				row = 0
 				while row < 10:
 					size = 0
@@ -405,7 +382,6 @@ class Board:
 		return 0
 
 	def logic_away(self):
-
 		self.flood_lines()
 		while True:
 			result = self.marshal_lines()
