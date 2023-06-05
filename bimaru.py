@@ -38,8 +38,7 @@ class Board:
 		self.remaining_pieces_col = []
 		self.empty_spaces_row = [10 for _ in range(10)]
 		self.empty_spaces_col = [10 for _ in range(10)]
-		self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam por de tamanho 'size'
-
+		self.boats = [4, 3, 2, 1]  # Where self.boats[size-1] = número de barcos que faltam pôr de tamanho 'size'
 		self.unclosed_rows = list(range(10))
 		self.unclosed_columns = list(range(10))
 
@@ -73,7 +72,7 @@ class Board:
 	# ------------------------- Getters -------------------------
 
 	def get_value(self, row: int, col: int):
-		"""Retorna valor da peça. Se peça for inválida, retorna None"""
+		"""Retorna a string na posição (row, col). Se a posição for inválida, retorna None"""
 		if self.is_inside_board(row, col):
 			return self.matrix[row][col]
 		else:
@@ -214,7 +213,7 @@ class Board:
 		for j in range(int(number_hints[0])):
 			hint = sys.stdin.readline().split()
 			board.add_hint(int(hint[1]), int(hint[2]), hint[3])
-				
+
 		board.sort_hints()  # Vai meter hints com M no fim da queue
 
 		board.logic_away()
@@ -432,6 +431,8 @@ class Board:
 		return 0
 
 	def logic_away(self):
+		""" Executa as funções flood_lines e marshal_lines até não haver mudanças no board.
+		Caso a função marshal_lines produza um estado ilegal vai retornar 1 """
 
 		self.flood_lines()
 		while True:
@@ -446,7 +447,7 @@ class Board:
 		return 0
 
 	def place_boat(self, row: int, col: int, size: int, orientation: int, hints: int):
-		""" Signigicado das hints é: peças que pertencem ao barco e ja se encontram no tabuleiro e ja têm os
+		""" Significado das hints: peças que pertencem ao barco e ja se encontram no tabuleiro e ja têm os
 		valores em consideracao no cálculo da informacao das linhas e colunas"""
 
 		# Verifica se o barco dado é valido
@@ -475,7 +476,7 @@ class Board:
 		""" Verifica se o barco dado como 'input' não viola regras triviais de barcos """
 		if size>4:
 			# Verifica se o tamanho do barco respeita as regras (max size = 4)
-			return True 
+			return True
 		elif self.boats[size-1] <= 0:
 			# Verifica se já foram colocados todos os barcos do tamanho dado como ‘input’
 			return True
@@ -498,6 +499,7 @@ class Board:
 		return False # Barco válido
 
 	def place_boat_single(self, row: int, col: int):
+		""" Função responsável por colocar barcos de size 1 """
 
 		if self.place_boat_line(row - 1, col, 'w', 0):  # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
 			return 1
@@ -507,6 +509,7 @@ class Board:
 			return 1
 
 	def place_boat_long_vertical(self, row: int, col: int, size: int):
+		""" Função responsável por colocar barcos de size > 1 e de orientação vertical """
 
 		if self.place_boat_line(row - 1, col, 'w', 0):  # [ '.' '.' '.'] -> [ 'w' 'w' 'w' ]
 			return 1
@@ -522,6 +525,7 @@ class Board:
 				return 1
 
 	def place_boat_long_horizontal(self, row: int, col: int, size: int):
+		""" Função responsável por colocar barcos de size > 1 e de orientação horizontal """
 
 		if self.place_boat_line(row, col - 1, 'w', 1):  # [ '.' '.' '.']^T -> [ 'w' 'w' 'w' ]^T
 			return 1
@@ -537,6 +541,7 @@ class Board:
 				return 1
 
 	def place_boat_line(self, row: int, col: int, piece: str, direction: int):
+		""" Esta função 'imprime' os barcos no board, mudando 3 tiles consecutivos por cada execução"""
 
 		water_pieces = [-1, 1]
 
@@ -576,7 +581,10 @@ class Board:
 
 	# ----------------------- Helper functions for Actions -----------------------
 
-	def get_hint_based_actions(self):  # Retorna uma ou mais actions com um unico move
+	def get_hint_based_actions(self):
+		""" Retornar todas as configurações possiveis de barcos para UMA Hint. Caso a peça seja 'M' vai
+		ignorar (já que existem muitas configurações possiveis). Caso a peça seja 'U' vai verificar se
+		está rodeada por água ou fronteiras, se não estiver também vai ignorar. """
 
 		hints = 1
 		actions = []
@@ -703,6 +711,8 @@ class Board:
 		return actions
 
 	def get_guess_boats_row(self, row: int, size: int):
+		""" Retorna todos os barcos possiveis de tamanho 'size' que
+		cabem na linha 'row' """
 
 		actions = []
 		hints = 0
@@ -729,6 +739,8 @@ class Board:
 		return actions
 
 	def get_guess_boats_col(self, col: int, size: int):
+		""" Retorna todos os barcos possiveis de tamanho 'size' que
+		cabem na coluna 'col' """
 
 		actions = []
 		hints = 0
@@ -754,7 +766,10 @@ class Board:
 
 		return actions
 
-	def get_guess_based_actions(self):  # Retorna uma ou mais actions com um unico move
+	def get_guess_based_actions(self):
+		""" A função primeiro verifica qual o maior tamanho de barco que ainda falta pôr e
+		retorna todos os barcos possiveis que têm esse tamanho. """
+
 		if len(self.get_available_sizes()) == 0:
 			return []
 		size = max(self.get_available_sizes())
@@ -789,13 +804,15 @@ class Bimaru(Problem):
 		super().__init__(BimaruState(board))
 
 	def actions(self, state: BimaruState):
-		"""Retorna uma lista de ações que podem ser executadas a partir
-		do estado passado como argumento. Retorna None quando nao consegue
-		encontrar uma unica jogada para devolver como ação. Uma açãoo
-		pode ser várias jogadas consecutivas caso uma das jogadas cause uma
-		chain reaction obrigatória. A funcao action pode entao retornar varias
-		actions e cada action pode ter varias jogadas em cadeia. A funcao result
-		aceita então um tuplo de jogadas. OU SEJA UMA ACAO E UM TUPLO DE JOGADAS"""
+		"""Retorna uma lista de ações que podem ser executadas a partir do estado
+		passado como argumento. Retorna lista vazia quando o estado é ilegal ou
+		não tem mais jogadas legais possiveis. Uma action é representada por um
+		tuplo de tamanho 5 com (row, col, size, orientation, hints) onde row/col é
+		a coordenada da peça mais top-left do barco. Size é o seu tamanho (range(1,5))
+		Orientation diz-nos se é vertical (1) ou horizontal (0). Hints é o número de
+		peças que pertencem ao barco e que já se encontram no tabuleiro por serem hints
+		dadas como input no parse_instance """
+
 
 		if state is None:
 			return []
